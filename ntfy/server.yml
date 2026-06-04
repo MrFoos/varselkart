@@ -1,0 +1,18 @@
+base-url: "https://ntfy.varselkart.no"
+upstream-base-url: "https://ntfy.sh"
+listen-http: ":80"
+
+auth-default-access: "read-only"
+auth-file: "/var/lib/ntfy/user.db"
+
+cache-file: "/var/lib/ntfy/cache.db"
+cache-duration: "12h"
+
+attachment-cache-dir: "/var/lib/ntfy/attachments"
+attachment-total-size-limit: "500M"
+attachment-file-size-limit: "15M"
+attachment-expiry-duration: "3h"
+
+# Web Push (VAPID-nøkler genereres automatisk ved første oppstart)
+# web-push-public-key-file: "/var/lib/ntfy/vapid-public.key"
+# web-push-private-key-file: "/var/lib/ntfy/vapid-private.key"
