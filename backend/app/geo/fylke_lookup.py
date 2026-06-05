@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from shapely.geometry import shape, Point
+from shapely.geometry import shape, Point, mapping
 from shapely.strtree import STRtree
 
 _instance: "FylkeLookup | None" = None
@@ -49,6 +49,7 @@ class FylkeLookup:
 
         self._geometries: list = []
         self._slugs: list[str] = []
+        self._raw_geoms: list[dict] = []
 
         for feat in fc["features"]:
             props = feat.get("properties", {})
@@ -63,6 +64,7 @@ class FylkeLookup:
                 geom = shape(feat["geometry"])
                 self._geometries.append(geom)
                 self._slugs.append(slug)
+                self._raw_geoms.append(feat["geometry"])
 
         self._tree = STRtree(self._geometries)
 
@@ -74,6 +76,13 @@ class FylkeLookup:
             for i in kandidater
             if self._geometries[i].contains(pt)
         ]
+
+    def hent_polygon(self, slug: str) -> Optional[dict]:
+        """Returnerer råt GeoJSON-geometri for gitt fylke-slug, eller None."""
+        for i, s in enumerate(self._slugs):
+            if s == slug:
+                return self._raw_geoms[i]
+        return None
 
     def geometri_til_fylker(self, geojson_geometry: dict) -> list[str]:
         """Returnerer alle fylker som overlapper med gitt GeoJSON-geometri."""

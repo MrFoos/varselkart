@@ -12,13 +12,20 @@ export function oppdaterStatusBar(feeds) {
   if (!feeds.length) { container.textContent = 'Ingen feeddata'; return; }
 
   container.innerHTML = feeds.map(f => {
-    const dotKlasse = f.status === 'ok' ? 'feed-ok'
-      : f.status === 'feil' ? 'feed-feil'
+    const erOk = f.status === 'ok';
+    const erFeil = f.status === 'feil';
+    const dotKlasse = erOk
+      ? (f.antall_aktive > 0 ? 'feed-ok' : 'feed-ok-tom')
+      : erFeil ? 'feed-feil'
       : 'feed-ukjent';
     const label = KILDE_LABEL[f.kilde] || f.kilde;
-    const tid = f.sist_ok ? ` ${_kortTid(f.sist_ok)}` : '';
-    const tittel = f.feilmelding ? ` title="${f.feilmelding}"` : '';
-    return `<span class="feed-item"${tittel}><span class="feed-dot ${dotKlasse}"></span>${label}${tid}</span>`;
+    const count = erOk
+      ? (f.antall_aktive > 0 ? ` (${f.antall_aktive})` : '')
+      : '';
+    const tooltipFeil = f.feilmelding ? f.feilmelding : '';
+    const tooltipTid = f.sist_ok ? `Sist ok: ${_kortTid(f.sist_ok)}` : 'Ikke hentet ennå';
+    const tittel = [tooltipTid, tooltipFeil].filter(Boolean).join(' — ');
+    return `<span class="feed-item" title="${tittel}"><span class="feed-dot ${dotKlasse}"></span>${label}${count}</span>`;
   }).join('');
 }
 

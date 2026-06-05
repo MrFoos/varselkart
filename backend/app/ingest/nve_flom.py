@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 
-from ..geo.fylke_lookup import FYLKE_SLUGS
+from ..geo.fylke_lookup import FYLKE_SLUGS, get_fylke_lookup
 from ..models import Varsel
 from .base import BaseIngestor
 
@@ -78,8 +78,15 @@ def _parse_warning(item: dict) -> Varsel | None:
     if lat and lon:
         geom = {"type": "Point", "coordinates": [float(lon), float(lat)]}
         geom_type = "punkt"
+    elif slug:
+        fylke_geom = get_fylke_lookup().hent_polygon(slug)
+        if fylke_geom:
+            geom = fylke_geom
+            geom_type = "polygon"
+        else:
+            geom = {"type": "Point", "coordinates": [10.0, 61.0]}
+            geom_type = "punkt"
     else:
-        # Ingen koordinater fra API — marker som region-type
         geom = {"type": "Point", "coordinates": [10.0, 61.0]}
         geom_type = "punkt"
 

@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 
-from ..geo.fylke_lookup import FYLKE_SLUGS
+from ..geo.fylke_lookup import FYLKE_SLUGS, get_fylke_lookup
 from ..models import Varsel
 from .base import BaseIngestor
 
@@ -52,8 +52,14 @@ def _parse(item: dict) -> Varsel | None:
     lon = item.get("Lon") or item.get("longitude")
     if lat and lon:
         geom = {"type": "Point", "coordinates": [float(lon), float(lat)]}
+        geom_type = "punkt"
+    elif slug:
+        fylke_geom = get_fylke_lookup().hent_polygon(slug)
+        geom = fylke_geom if fylke_geom else {"type": "Point", "coordinates": [10.0, 61.0]}
+        geom_type = "polygon" if fylke_geom else "punkt"
     else:
         geom = {"type": "Point", "coordinates": [10.0, 61.0]}
+        geom_type = "punkt"
 
     municipality = item.get("MunicipalityName", "")
     county_name = item.get("CountyName", "")
@@ -63,7 +69,7 @@ def _parse(item: dict) -> Varsel | None:
         kilde="nve_jordskred",
         kilde_kategori="jordskred",
         kilde_alvorsetikett=str(aktivitet),
-        geometri_type="punkt",
+        geometri_type=geom_type,
         geometri_json=json.dumps(geom),
         fylke_tags=fylke_tags,
         tittel=f"Jordskredvarsel — {municipality or county_name}",
