@@ -15,7 +15,7 @@ export function initMap() {
           type: 'raster',
           tiles: KARTVERKET_TILES,
           tileSize: 256,
-          attribution: '© <a href="https://kartverket.no">Kartverket</a>',
+          attribution: '© <a href="https://kartverket.no">Kartverket</a> · Data under <a href="https://data.norge.no/nlod/no/2.0">NLOD 2.0</a>',
           minzoom: 0,
           maxzoom: 18,
         },

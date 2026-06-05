@@ -3,7 +3,6 @@
 :root {
   --sidebar-w: 340px;
   --header-h: 48px;
-  --status-h: 32px;
   --sheet-peek: 72px;       /* Synlig del av bottom sheet på mobil */
   --radius: 10px;
   --bg: #1a1a2e;
@@ -31,13 +30,20 @@ body { background: var(--bg); color: var(--text); overflow: hidden; }
   height: var(--header-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 0 12px;
   flex-shrink: 0;
   z-index: 10;
 }
 #header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
 #header .subtitle { font-size: 11px; color: var(--text-dim); }
+
+.header-status {
+  display: flex; align-items: center; flex-wrap: nowrap; gap: 0;
+  font-size: 11px; color: var(--text-dim);
+  flex-shrink: 1; min-width: 0;
+  overflow: hidden;
+}
 
 #main { flex: 1; display: flex; min-height: 0; position: relative; }
 #map { flex: 1; }
@@ -109,25 +115,18 @@ body { background: var(--bg); color: var(--text); overflow: hidden; }
 .lag-toggle input[type=checkbox] { accent-color: var(--alvor-nve); }
 .lag-toggle label { font-size: 12px; cursor: pointer; }
 
-/* ── Feed-status bar ── */
-#status-bar {
-  height: var(--status-h);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 12px;
-  font-size: 11px;
-  color: var(--text-dim);
-  overflow-x: auto;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.feed-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+/* ── Feed-status ── */
+.feed-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .feed-ok      { background: #4caf50; }
 .feed-ok-tom  { background: #78909c; }
 .feed-feil    { background: #f44336; }
 .feed-ukjent  { background: #9e9e9e; }
-.feed-item { display: flex; align-items: center; gap: 2px; margin-right: 8px; }
+.feed-item {
+  display: flex; align-items: center; gap: 3px;
+  padding: 0 6px; white-space: nowrap;
+  border-right: 1px solid var(--border);
+}
+.feed-item:last-child { border-right: none; }
 
 /* ── Tom-tilstand ── */
 #tom-melding {
@@ -138,7 +137,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; }
 /* ── Mobile layout ── */
 @media (max-width: 700px) {
   #sidebar {
-    position: absolute; bottom: var(--status-h); left: 0; right: 0;
+    position: absolute; bottom: 0; left: 0; right: 0;
     width: 100%; height: calc(60vh + var(--sheet-peek));
     border-left: none; border-top: 1px solid var(--border);
     border-radius: var(--radius) var(--radius) 0 0;
@@ -152,12 +151,11 @@ body { background: var(--bg); color: var(--text); overflow: hidden; }
     background: var(--text-dim); margin: 8px auto 4px;
     cursor: pointer;
   }
-  #layer-panel { top: auto; bottom: calc(var(--sheet-peek) + var(--status-h) + 8px); left: 10px; }
+  #layer-panel { top: auto; bottom: calc(var(--sheet-peek) + 8px); left: 10px; }
 }
 @media (min-width: 701px) {
   #sidebar-handle { display: none; }
 }
 
 /* ── MapLibre overrides ── */
-.maplibregl-ctrl-bottom-right { bottom: calc(var(--status-h) + 4px) !important; }
 .maplibregl-ctrl-attrib { font-size: 9px !important; }
