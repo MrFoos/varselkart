@@ -1,13 +1,13 @@
 """
 MET MetAlerts ingestor.
-Henter aktive farevarsler fra api.met.no i CAP XML-format.
-Returnerer polygon-geometri fra kilden direkte (ikke aggregert til fylke).
+Henter aktive farevarsler fra RSS-feed. Geometri er inline som georss:polygon —
+ingen ekstra CAP-forespørsler nødvendig.
 """
 
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Optional
 
 import httpx
@@ -20,14 +20,14 @@ from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
-CAP_NS = "urn:oasis:names:tc:emergency:cap:1.2"
 FEED_URL = "https://api.met.no/weatherapi/metalerts/2.0/current?geographicDomain=land&lang=no"
+GEORSS_NS = "http://www.georss.org/georss"
 
-# Kildens alvorsetiketter — brukes umodifisert
-AWARENESS_LEVEL_MAP = {
-    "2; yellow; Moderate": "gul",
-    "3; orange; Severe": "oransje",
-    "4; red; Extreme": "rød",
+# Kildens egne alvors-tekster (fra title-feltet i RSS)
+ALVOR_FARGER = {
+    "gult nivå": "gul",
+    "oransje nivå": "oransje",
+    "rødt nivå": "rød",
 }
 
 
@@ -42,128 +42,110 @@ class MetIngestor(BaseIngestor):
             resp.raise_for_status()
 
         root = etree.fromstring(resp.content)
-        varsler: list[Varsel] = []
         lookup = get_fylke_lookup()
+        varsler: list[Varsel] = []
 
-        # RSS-innpakking: hvert <item> er en CAP-peker; vi henter selve CAP
-        # Fra /current.rss → parse CAP-link per item
-        # Merk: /current returnerer RSS med lenker til individuelle CAP-dokumenter
-        # Vi parser RSS og henter CAP per varsel for å få geometri
-        items = root.findall(".//item")
-        if not items:
-            # Prøv direkte CAP-feed
-            items = root.findall(f".//{{{CAP_NS}}}alert")
-
-        async with httpx.AsyncClient(timeout=30) as client:
-            for item in items:
-                try:
-                    varsel = await _parse_item(item, client, headers, lookup)
-                    if varsel:
-                        varsler.append(varsel)
-                except Exception as exc:
-                    logger.warning("Feil ved parsing av MET-varsel: %s", exc)
+        for item in root.findall(".//item"):
+            try:
+                varsel = _parse_item(item, lookup)
+                if varsel:
+                    varsler.append(varsel)
+            except Exception as exc:
+                logger.warning("Feil ved parsing av MET-varsel: %s", exc)
 
         return varsler
 
 
-async def _parse_item(item, client: httpx.AsyncClient, headers: dict, lookup) -> Optional[Varsel]:
-    # Hent CAP-URL fra RSS-item
-    link_el = item.find("link")
-    if link_el is None or not link_el.text:
+def _parse_item(item, lookup) -> Optional[Varsel]:
+    guid = item.findtext("guid") or ""
+    if not guid:
         return None
 
-    cap_url = link_el.text.strip()
-    resp = await client.get(cap_url, headers=headers)
-    resp.raise_for_status()
+    dedup_id = hashlib.sha256(f"met:{guid}".encode()).hexdigest()[:32]
 
-    cap = etree.fromstring(resp.content)
-    ns = CAP_NS
+    # Title-format: "Event, nivå, Område, gyldig_fra, gyldig_til"
+    title = item.findtext("title") or ""
+    parts = [p.strip() for p in title.split(",")]
 
-    identifier = cap.findtext(f"{{{ns}}}identifier") or ""
-    dedup_id = hashlib.sha256(f"met:{identifier}".encode()).hexdigest()[:32]
+    event_navn = parts[0] if parts else ""
+    alvor_raw = parts[1] if len(parts) > 1 else ""
+    area_navn = parts[2] if len(parts) > 2 else ""
+    gyldig_fra_str = parts[3] if len(parts) > 3 else None
+    gyldig_til_str = parts[4] if len(parts) > 4 else None
 
-    sent = cap.findtext(f"{{{ns}}}sent")
-    status_cap = cap.findtext(f"{{{ns}}}status")
-    if status_cap == "Test":
-        return None
+    # Bevar kildens alvors-tekst umodifisert ("gult nivå", "oransje nivå", "rødt nivå")
+    kilde_alvorsetikett = alvor_raw
 
-    info = cap.find(f"{{{ns}}}info")
-    if info is None:
-        return None
+    beskrivelse = item.findtext("description") or ""
+    # Strip "Alert: " prefix som MET legger på
+    if beskrivelse.startswith("Alert: "):
+        beskrivelse = beskrivelse[7:]
 
-    event = info.findtext(f"{{{ns}}}event") or ""
-    headline = info.findtext(f"{{{ns}}}headline") or ""
-    description = info.findtext(f"{{{ns}}}description") or ""
-    onset = info.findtext(f"{{{ns}}}onset")
-    expires = info.findtext(f"{{{ns}}}expires")
-    web = info.findtext(f"{{{ns}}}web")
+    pub_date_str = item.findtext("pubDate") or ""
+    utstedt = _rss_date_to_iso(pub_date_str)
 
-    # Hent awareness_level fra <parameter>
-    awareness_raw = ""
-    for param in info.findall(f"{{{ns}}}parameter"):
-        vname = param.findtext(f"{{{ns}}}valueName") or ""
-        if vname == "awareness_level":
-            awareness_raw = param.findtext(f"{{{ns}}}value") or ""
-            break
+    lenke = item.findtext("link") or ""
 
-    alvorsetikett = AWARENESS_LEVEL_MAP.get(awareness_raw, awareness_raw)
-
-    # Geometri: polygon fra <area>
-    area = info.find(f"{{{ns}}}area")
-    geometri_json: Optional[str] = None
-    geometri_type = "polygon"
+    # Geometri — georss:polygon er "lat lon lat lon ..."
+    polygon_el = item.find(f"{{{GEORSS_NS}}}polygon")
     fylke_tags: list[str] = []
 
-    if area is not None:
-        polygon_text = area.findtext(f"{{{ns}}}polygon")
-        if polygon_text:
-            coords = _cap_polygon_to_geojson_coords(polygon_text)
-            geom = {"type": "Polygon", "coordinates": [coords]}
-            geometri_json = json.dumps(geom)
-            fylke_tags = lookup.geometri_til_fylker(geom)
-
-    if geometri_json is None:
-        geometri_json = json.dumps({"type": "Point", "coordinates": [10.0, 59.9]})
+    if polygon_el is not None and polygon_el.text:
+        coords = _georss_polygon_to_coords(polygon_el.text)
+        geom = {"type": "Polygon", "coordinates": [coords]}
+        geometri_json = json.dumps(geom)
+        geometri_type = "polygon"
+        fylke_tags = lookup.geometri_til_fylker(geom)
+    else:
+        geom = {"type": "Point", "coordinates": [15.0, 65.0]}
+        geometri_json = json.dumps(geom)
         geometri_type = "punkt"
+
+    tittel = f"{event_navn} — {area_navn}" if area_navn else event_navn
 
     return Varsel(
         dedup_id=dedup_id,
         kilde="met",
-        kilde_kategori=event,
-        kilde_alvorsetikett=alvorsetikett,
+        kilde_kategori=event_navn,
+        kilde_alvorsetikett=kilde_alvorsetikett,
         geometri_type=geometri_type,
         geometri_json=geometri_json,
         fylke_tags=fylke_tags,
-        tittel=headline,
-        beskrivelse=description[:1000] if description else None,
-        utstedt=_iso_to_utc(sent),
-        gyldig_til=_iso_to_utc(expires),
-        lenke=web or cap_url,
-        raw_json=None,  # Ikke lagre rå CAP i prod (stor)
-        first_seen="",  # Settes av BaseIngestor
+        tittel=tittel,
+        beskrivelse=beskrivelse.strip()[:800] if beskrivelse else None,
+        utstedt=utstedt,
+        gyldig_til=_iso_strip(gyldig_til_str),
+        lenke=lenke,
+        raw_json=None,
+        first_seen="",
         last_seen="",
     )
 
 
-def _cap_polygon_to_geojson_coords(polygon_text: str) -> list[list[float]]:
-    """CAP-polygon er 'lat,lon lat,lon ...' — GeoJSON vil ha [lon, lat]."""
+def _georss_polygon_to_coords(text: str) -> list[list[float]]:
+    """GeoRSS polygon er 'lat lon lat lon ...' — GeoJSON vil ha [lon, lat]."""
+    tokens = text.strip().split()
     coords = []
-    for pair in polygon_text.strip().split():
-        parts = pair.split(",")
-        if len(parts) >= 2:
-            lat, lon = float(parts[0]), float(parts[1])
-            coords.append([lon, lat])
-    # Lukk polygon
+    for i in range(0, len(tokens) - 1, 2):
+        lat, lon = float(tokens[i]), float(tokens[i + 1])
+        coords.append([lon, lat])
     if coords and coords[0] != coords[-1]:
         coords.append(coords[0])
     return coords
 
 
-def _iso_to_utc(ts: Optional[str]) -> Optional[str]:
-    if not ts:
+def _rss_date_to_iso(rss_date: str) -> Optional[str]:
+    if not rss_date:
         return None
     try:
-        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        return dt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        dt = parsedate_to_datetime(rss_date)
+        return dt.isoformat(timespec="seconds").replace("+00:00", "Z")
     except Exception:
-        return ts
+        return rss_date
+
+
+def _iso_strip(ts: Optional[str]) -> Optional[str]:
+    """Normaliserer ISO8601-streng til UTC Z-format."""
+    if not ts:
+        return None
+    return ts.replace("+00:00", "Z").strip()

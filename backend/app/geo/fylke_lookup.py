@@ -7,8 +7,17 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from shapely.geometry import shape, Point, mapping
+from shapely.geometry import shape, Point
 from shapely.strtree import STRtree
+
+_instance: "FylkeLookup | None" = None
+
+
+def get_fylke_lookup() -> "FylkeLookup":
+    global _instance
+    if _instance is None:
+        _instance = FylkeLookup()
+    return _instance
 
 
 # 15 fylker per 2024-inndelingen

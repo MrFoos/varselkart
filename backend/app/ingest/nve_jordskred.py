@@ -13,7 +13,7 @@ from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10"
+BASE_URL = "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api"
 
 
 class NveJordskredIngestor(BaseIngestor):

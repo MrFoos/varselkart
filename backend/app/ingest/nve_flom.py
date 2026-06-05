@@ -16,7 +16,7 @@ from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://api01.nve.no/hydrology/forecast/flood/v1.0.10"
+BASE_URL = "https://api01.nve.no/hydrology/forecast/flood/v1.0.10/api"
 
 AKTIVITETSNIVÅ = {0: "Ikke vurdert", 1: "Liten", 2: "Moderat", 3: "Betydelig", 4: "Stor"}
 
@@ -36,7 +36,7 @@ class NveFlomIngestor(BaseIngestor):
         start = nå.strftime("%Y-%m-%d")
         slutt = (nå + timedelta(days=2)).strftime("%Y-%m-%d")
 
-        url = f"{BASE_URL}/Warning/1/{start}/{slutt}"
+        url = f"{BASE_URL}/Warning/1/{start}/{slutt}"  # /api/Warning/{langkey}/{start}/{end}
         headers = {"Accept": "application/json"}
 
         async with httpx.AsyncClient(timeout=30) as client:

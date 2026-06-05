@@ -72,7 +72,8 @@ class AvinorIngestor(BaseIngestor):
         varsler: list[Varsel] = []
         lookup = get_fylke_lookup()
 
-        async with httpx.AsyncClient(timeout=30) as client:
+        feil_teller = 0
+        async with httpx.AsyncClient(timeout=15) as client:
             for iata, navn, lon, lat, fylke_slug in FLYPLASSER:
                 try:
                     flyvninger = await _hent_flyplass(client, iata, headers)
@@ -82,13 +83,14 @@ class AvinorIngestor(BaseIngestor):
                             varsler.append(v)
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code == 401:
-                        logger.warning(
-                            "Avinor: 401 for %s — trenger API-nøkkel fra api2-developer.avinor.no", iata
-                        )
-                    else:
-                        logger.warning("Avinor %s: HTTP %s", iata, exc.response.status_code)
-                except Exception as exc:
-                    logger.warning("Avinor %s: %s", iata, exc)
+                        logger.warning("Avinor: 401 — registrér på api2-developer.avinor.no for API-nøkkel")
+                        break  # Ikke prøv resten om vi ikke har tilgang
+                    feil_teller += 1
+                except Exception:
+                    feil_teller += 1
+
+        if feil_teller > 0:
+            logger.warning("Avinor: %d/%d flyplasser utilgjengelige", feil_teller, len(FLYPLASSER))
 
         return varsler
 

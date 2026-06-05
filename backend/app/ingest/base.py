@@ -8,22 +8,13 @@ import logging
 import sqlite3
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional  # noqa: F401
 
 from ..database import get_connection
 from ..models import Varsel
-from ..geo.fylke_lookup import FylkeLookup
+from ..geo.fylke_lookup import get_fylke_lookup  # noqa: F401 (re-eksportert for bakoverkompatibilitet)
 
 logger = logging.getLogger(__name__)
-
-_fylke_lookup: Optional[FylkeLookup] = None
-
-
-def get_fylke_lookup() -> FylkeLookup:
-    global _fylke_lookup
-    if _fylke_lookup is None:
-        _fylke_lookup = FylkeLookup()
-    return _fylke_lookup
 
 
 def _utc_now() -> str:
