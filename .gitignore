@@ -1,4 +1,5 @@
 .env
+design_handoff_varselkart/
 *.db
 *.db-wal
 *.db-shm

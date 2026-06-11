@@ -40,7 +40,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.app_env == "development" else ["https://varselkart.no"],
     allow_methods=["GET"],
-    allow_headers=["*"],
+    allow_headers=["*"] if settings.app_env == "development" else ["Content-Type", "Accept", "If-None-Match"],
+    expose_headers=["ETag"],
 )
 
 app.include_router(varsler.router, prefix="/api")

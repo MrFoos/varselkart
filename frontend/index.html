@@ -1,53 +1,91 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="no" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>varselkart.no – Nasjonalt varslingskart</title>
   <meta name="description" content="Offisielle varsler fra MET, NVE, Statens vegvesen og Avinor samlet på ett kart.">
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+  <meta property="og:title" content="varselkart.no – Nasjonalt varslingskart">
+  <meta property="og:description" content="Offisielle varsler fra MET, NVE og Statens vegvesen samlet på ett kart.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://varselkart.no">
+  <link rel="canonical" href="https://varselkart.no">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/favicon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#E2571A">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
-  <header id="header">
-    <div>
-      <h1>varselkart.no</h1>
-      <div class="subtitle">Offisielle varsler fra MET · NVE · Statens vegvesen · Avinor</div>
+
+  <header id="app-header">
+    <a id="brand" href="/"></a>
+    <div id="header-actions">
+      <button id="dark-toggle" aria-label="Bytt modus"></button>
+      <a href="/om.html" class="pill-link">Om</a>
+      <!-- SKJULT I v1 — ntfy-varsling. Behold for senere versjon. Se docs/ntfy-parkert.md.
+      <button id="bell-btn" class="bell-btn" aria-label="Følg fylker">
+        <span class="bell-label">Følg fylker</span>
+      </button>
+      -->
     </div>
-    <div id="feed-status-items" class="header-status">Kobler til…</div>
   </header>
 
-  <div id="main">
-    <div id="map"></div>
+  <main id="main">
 
-    <!-- Lag-kontroll -->
-    <div id="layer-panel">
-      <h3>Lag</h3>
-      <label class="lag-toggle"><input type="checkbox" data-lag="met" checked> <span>MET Farevarsel</span></label>
-      <label class="lag-toggle"><input type="checkbox" data-lag="nve_flom" checked> <span>NVE Flom</span></label>
-      <label class="lag-toggle"><input type="checkbox" data-lag="nve_jordskred" checked> <span>NVE Jordskred</span></label>
-      <label class="lag-toggle"><input type="checkbox" data-lag="nve_snoskred" checked> <span>NVE Snøskred</span></label>
-      <label class="lag-toggle"><input type="checkbox" data-lag="vegvesen"> <span>Vegvesen</span></label>
-      <label class="lag-toggle"><input type="checkbox" data-lag="avinor"> <span>Avinor</span></label>
+    <!-- Venstre rail: varsel-liste og detalj -->
+    <div id="left-rail">
+      <div id="rail-list-wrap">
+        <div id="fylke-filter"></div>
+        <div id="rail-header"></div>
+        <div id="varsel-list"></div>
+        <div id="disclaimer"></div>
+      </div>
+      <div id="rail-detail" hidden></div>
     </div>
 
-    <!-- Sidebar / bottom sheet -->
-    <aside id="sidebar">
-      <div id="sidebar-handle"></div>
-      <div id="sidebar-header">
-        <h2>Aktive varsler</h2>
-        <div id="varsel-count">Laster…</div>
-      </div>
-      <div id="varsel-list">
-        <div id="tom-melding">Ingen aktive varsler akkurat nå.</div>
-      </div>
-    </aside>
+    <!-- Kart-kolonne -->
+    <div id="map-column">
+      <div id="chip-bar"></div>
+      <div id="map"></div>
+      <div id="no-data-note" hidden></div>
+    </div>
+
+  </main>
+
+  <footer id="app-footer">
+    <span>© 2026 varselkart.no</span>
+    <span class="app-footer-sep" aria-hidden="true">·</span>
+    <span>Kartdata: <a href="https://kartverket.no" target="_blank" rel="noopener">Kartverket</a></span>
+    <span class="app-footer-sep" aria-hidden="true">·</span>
+    <span>Varsler: MET, NVE, Statens vegvesen</span>
+  </footer>
+
+  <!-- Mobil-innhold (varsel-liste under kart) -->
+  <div id="mobile-content">
+    <div id="mobile-fylke-filter"></div>
+    <div id="mobile-rail-header"></div>
+    <div id="mobile-varsel-list"></div>
+    <div id="mobile-disclaimer"></div>
   </div>
+
+  <!-- Bottom sheets -->
+  <div id="sheet-detail" class="sheet"></div>
+  <div id="sheet-bell" class="sheet"></div>
+
+  <!-- Scrim (bakgrunn bak sheets) -->
+  <div id="scrim" class="scrim"></div>
 
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js"></script>
 <script type="module" src="src/app.js"></script>
 </body>
 </html>

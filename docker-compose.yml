@@ -7,6 +7,12 @@ services:
     restart: unless-stopped
     networks:
       - varselkart
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     image: nginx:alpine

@@ -3,13 +3,14 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import settings
+from .ingest.base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="UTC")
 
 
-def registrer_jobber() -> None:
+def registrer_jobber() -> list[BaseIngestor]:
     """Registrerer alle ingest-jobber. Kalles fra main.py lifespan-hook."""
     from .ingest.met import MetIngestor
     from .ingest.nve_flom import NveFlomIngestor
@@ -28,9 +29,8 @@ def registrer_jobber() -> None:
         from .ingest.vegvesen import VegvesenIngestor
         jobber.append((VegvesenIngestor(), settings.poll_interval_vegvesen))
 
-    if True:  # Avinor prøves alltid (ingen nøkkel nødvendig initialt)
-        from .ingest.avinor import AvinorIngestor
-        jobber.append((AvinorIngestor(), settings.poll_interval_avinor))
+    # Avinor: services.avinor.no er utilgjengelig og api2-developer.avinor.no
+    # støtter ikke selvregistrering — deaktivert inntil videre.
 
     for ingestor, intervall in jobber:
         scheduler.add_job(

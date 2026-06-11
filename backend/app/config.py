@@ -1,17 +1,18 @@
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    met_user_agent: str = "varselkart/1.0 gardenhagen@gmail.com"
+    met_user_agent: str = "varselkart/1.0 (https://varselkart.no)"
 
     datex_username: str = ""
-    datex_password: str = ""
+    datex_password: SecretStr = SecretStr("")
 
-    avinor_api_key: str = ""
+    avinor_api_key: SecretStr = SecretStr("")
 
-    ntfy_token: str = ""
+    ntfy_token: SecretStr = SecretStr("")
     ntfy_base_url: str = "https://ntfy.varselkart.no"
 
     database_path: str = "./varselkart.db"

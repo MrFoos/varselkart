@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="nb" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Om — varselkart.no</title>
+  <meta name="description" content="Om varselkart.no — offisielle varsler fra MET, NVE og Statens vegvesen samlet på ett kart.">
+  <meta property="og:title" content="Om varselkart.no">
+  <meta property="og:description" content="Om varselkart.no — offisielle varsler fra MET, NVE og Statens vegvesen samlet på ett kart.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://varselkart.no/om.html">
+  <link rel="canonical" href="https://varselkart.no/om.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/favicon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#E2571A">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Om-side layout overrides ── */
+    html, body { height: auto; overflow: auto; }
+    #app { height: auto; min-height: 100vh; flex-direction: column; }
+
+    /* ── Header ── */
+    #app-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: var(--header-h);
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    #brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 17px;
+      text-decoration: none;
+      color: inherit;
+    }
+    #dark-toggle { color: var(--accent); }
+
+    /* ── Om-innhold ── */
+    .om-main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    .om-section {
+      padding: 56px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .om-section:last-of-type { border-bottom: none; }
+
+    .barhead { display: flex; flex-direction: column; gap: 14px; }
+    .barhead .bar { width: 54px; height: 5px; border-radius: 99px; background: var(--accent); }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ── Hero ── */
+    .hero { padding: 78px 0 60px; }
+    .hero h1 {
+      margin: 20px 0 0;
+      font-family: var(--font-display);
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.02;
+      max-width: 14ch;
+    }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .lead {
+      margin: 26px 0 0;
+      font-size: 21px;
+      line-height: 1.5;
+      color: var(--dim);
+      max-width: 60ch;
+    }
+    .lead strong { color: var(--text); font-weight: 600; }
+    .hero-sources { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 30px; }
+    .src-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: 99px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+    .src-chip .dot { width: 9px; height: 9px; border-radius: 99px; flex-shrink: 0; }
+
+    /* ── Seksjonstittel ── */
+    h2.sec {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 34px;
+      letter-spacing: -.02em;
+    }
+    .sec-intro {
+      margin: 16px 0 0;
+      font-size: 16.5px;
+      line-height: 1.55;
+      color: var(--dim);
+      max-width: 62ch;
+    }
+
+    /* ── Er / Er ikke ── */
+    .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 34px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 28px 28px 26px;
+      box-shadow: 0 1px 2px rgba(40,24,10,.05), 0 12px 36px rgba(40,24,10,.05);
+    }
+    [data-theme="dark"] .card {
+      box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.5);
+    }
+    .card.flag { border-color: rgba(226,87,26,.32); }
+    [data-theme="dark"] .card.flag { border-color: rgba(255,106,43,.42); }
+    .card h3 {
+      margin: 0 0 16px;
+      font-size: 14px;
+      font-family: var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .card.muted h3 { color: var(--dim); }
+    .lst { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .lst li { display: flex; gap: 12px; font-size: 16px; line-height: 1.45; }
+    .lst li .tick { flex-shrink: 0; margin-top: 2px; color: var(--accent); }
+    .card.muted .lst li .tick { color: var(--faint); }
+
+    /* ── Kilder ── */
+    .src-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 34px; }
+    .source {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 24px 26px;
+      box-shadow: 0 1px 2px rgba(40,24,10,.05), 0 12px 36px rgba(40,24,10,.05);
+    }
+    [data-theme="dark"] .source {
+      box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.5);
+    }
+    .source-top { display: flex; align-items: center; gap: 11px; }
+    .source-top .dot {
+      width: 13px; height: 13px; border-radius: 5px; flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+    }
+    .source-top .nm { font-size: 18.5px; font-weight: 700; }
+    .source-top .org {
+      margin-left: auto;
+      font-size: 12.5px;
+      color: var(--dim);
+      font-family: var(--font-mono);
+    }
+    .source p { margin: 14px 0 0; font-size: 15px; line-height: 1.5; color: var(--dim); }
+    .source .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .tag {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--dim);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 99px;
+      padding: 4px 11px;
+    }
+    .tag b { color: var(--text); font-weight: 700; }
+
+    /* ── Bruk ── */
+    .use-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 34px; }
+    .use {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: 0 1px 2px rgba(40,24,10,.05), 0 12px 36px rgba(40,24,10,.05);
+    }
+    [data-theme="dark"] .use {
+      box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.5);
+    }
+    .use .ix {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: .06em;
+    }
+    .use h4 { margin: 10px 0 8px; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+    .use p { font-size: 15px; line-height: 1.5; color: var(--dim); }
+    .badge-demo {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 14px;
+      padding: 4px 11px 4px 7px;
+      border-radius: 99px;
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .badge-demo .sq {
+      width: 17px; height: 17px; border-radius: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #1a1206;
+    }
+
+    /* ── Disclaimer-banner ── */
+    .disclaimer {
+      background: rgba(226,87,26,.1);
+      border: 1px solid rgba(226,87,26,.32);
+      border-radius: 22px;
+      padding: 34px 36px;
+      display: flex;
+      gap: 22px;
+      align-items: flex-start;
+    }
+    [data-theme="dark"] .disclaimer {
+      background: rgba(255,106,43,.16);
+      border-color: rgba(255,106,43,.42);
+    }
+    .disclaimer .ico { flex-shrink: 0; color: var(--accent); margin-top: 2px; }
+    .disclaimer .eyebrow { margin-bottom: 10px; }
+    .disclaimer p { font-size: 19px; line-height: 1.5; font-weight: 500; max-width: 58ch; }
+    .disclaimer p .hl { color: var(--accent); font-weight: 700; }
+
+    /* ── Kolofon ── */
+    .colo { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; }
+    .colo p { font-size: 15.5px; line-height: 1.6; color: var(--dim); margin: 14px 0 0; }
+    .colo a.tlink {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(226,87,26,.32);
+    }
+    [data-theme="dark"] .colo a.tlink { border-bottom-color: rgba(255,106,43,.42); }
+    .facts { display: flex; flex-direction: column; }
+    .fact {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 14.5px;
+    }
+    .fact:first-child { padding-top: 0; }
+    .fact .k { color: var(--dim); }
+    .fact .v { font-family: var(--font-mono); color: var(--text); }
+
+    /* ── Footer ── */
+    .om-footer {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 30px 32px 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .om-footer .small { font-size: 13px; color: var(--dim); }
+    .om-footer .ftlinks { display: flex; gap: 22px; font-size: 14px; font-weight: 600; }
+    .om-footer .ftlinks a { text-decoration: none; color: var(--dim); }
+    .om-footer .ftlinks a:hover { color: var(--accent); }
+
+    /* ── Responsiv ── */
+    @media (max-width: 820px) {
+      .om-main, .om-footer { padding-left: 20px; padding-right: 20px; }
+      .hero { padding-top: 48px; }
+      .hero h1 { font-size: 42px; }
+      .lead { font-size: 18px; }
+      h2.sec { font-size: 27px; }
+      .duo, .src-grid, .use-grid, .colo { grid-template-columns: 1fr; }
+      .disclaimer { flex-direction: column; gap: 14px; padding: 26px; }
+      .disclaimer p { font-size: 17px; }
+      .source[style*="grid-column"] { grid-column: auto !important; }
+    }
+
+    /* var(--accent) in light mode (#e2571a) fails WCAG AA for small text — use a darker tint */
+    [data-theme="light"] .eyebrow { color: #b03010; }
+    [data-theme="light"] .card.flag h3 { color: #b03010; }
+    [data-theme="light"] .use .ix { color: #b03010; }
+    [data-theme="light"] .disclaimer p .hl { color: #b03010; }
+    [data-theme="light"] .colo a.tlink { color: #b03010; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header id="app-header">
+    <a id="brand" href="/">
+      <svg width="47" height="47" viewBox="0 0 24 24" fill="none" style="display:block;flex-shrink:0">
+        <rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)" fill="none" stroke="var(--accent)" stroke-width="2.2"/>
+        <circle cx="12" cy="12" r="3.2" fill="var(--accent)"/>
+      </svg>
+      <span style="font-family:var(--font-display);font-weight:var(--display-weight);font-size:40px;letter-spacing:-.02em;line-height:1;white-space:nowrap">
+        <span style="color:var(--text)">varsel</span><span style="color:var(--accent)">kart</span><span style="color:var(--dim);font-size:25px;font-weight:600;letter-spacing:0;margin-left:1px">.no</span>
+      </span>
+    </a>
+    <div id="header-actions">
+      <button id="dark-toggle" aria-label="Bytt modus"></button>
+      <a href="/" class="pill-link" style="white-space:nowrap">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0"><path d="M12 4l-6 6 6 6"/></svg>
+        Til kartet
+      </a>
+      <!-- SKJULT I v1 — ntfy-varsling. Behold for senere versjon. Se docs/ntfy-parkert.md.
+      <button id="bell-btn" class="bell-btn" aria-label="Følg fylker">
+        <span class="bell-label">Følg fylker</span>
+      </button>
+      -->
+    </div>
+  </header>
+
+  <main class="om-main">
+
+    <!-- HERO -->
+    <section class="om-section hero">
+      <div class="eyebrow">Om tjenesten</div>
+      <h1>Offisielle varsler, samlet på <em>ett kart</em>.</h1>
+      <p class="lead">varselkart.no henter <strong>vær-, flom-, skred- og vegvarsler</strong> fra Norges offisielle etater og viser dem samlet i sanntid. Vi gjengir varslene slik de er publisert — uten å tolke eller rangere dem.</p>
+      <div class="hero-sources">
+        <span class="src-chip"><span class="dot" style="background:var(--met)"></span>MET Farevarsel</span>
+        <span class="src-chip"><span class="dot" style="background:var(--flom)"></span>NVE Flom</span>
+        <span class="src-chip"><span class="dot" style="background:var(--jord)"></span>NVE Jordskred</span>
+        <span class="src-chip"><span class="dot" style="background:var(--sno)"></span>NVE Snøskred</span>
+        <span class="src-chip"><span class="dot" style="background:var(--veg)"></span>Statens vegvesen</span>
+      </div>
+    </section>
+
+    <!-- HVA DETTE ER / IKKE ER -->
+    <section class="om-section">
+      <div class="barhead">
+        <div class="bar"></div>
+        <h2 class="sec">Hva dette er — og ikke er</h2>
+      </div>
+      <p class="sec-intro">varselkart.no er et uavhengig oversiktskart. Det erstatter ikke de offisielle kanalene, men gjør det enklere å se hva som gjelder akkurat nå, på tvers av etatene.</p>
+      <div class="duo">
+        <div class="card flag">
+          <h3>Dette er</h3>
+          <ul class="lst">
+            <li><span class="tick">✓</span><span>Et samlet, oppdatert kart over offisielle varsler i Norge.</span></li>
+            <li><span class="tick">✓</span><span>Varsler vist nøyaktig slik kilden har publisert dem — med kildens egen etikett og faregrad.</span></li>
+            <li><span class="tick">✓</span><span>Direkte lenker videre til hver enkelt kildes offisielle varsel.</span></li>
+            <li><span class="tick">✓</span><span>Gratis, uten konto og uten sporing.</span></li>
+          </ul>
+        </div>
+        <div class="card muted">
+          <h3>Dette er ikke</h3>
+          <ul class="lst">
+            <li><span class="tick">✕</span><span>En offisiell nød- eller beredskapskanal. Ved akutt fare, ring 110/112.</span></li>
+            <li><span class="tick">✕</span><span>En egen vurdering av alvorlighetsgrad — vi rangerer ingenting selv.</span></li>
+            <li><span class="tick">✕</span><span>En garanti for at alt er med til enhver tid. Følg alltid offisielle kanaler.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- KILDER -->
+    <section class="om-section">
+      <div class="barhead">
+        <div class="bar"></div>
+        <h2 class="sec">Kilder</h2>
+      </div>
+      <p class="sec-intro">All data hentes automatisk fra etatenes åpne API-er og oppdateres løpende. Hver kilde har sin egen farge på kartet og i filtrene.</p>
+      <div class="src-grid">
+        <div class="source">
+          <div class="source-top">
+            <span class="dot" style="background:var(--met)"></span>
+            <span class="nm">MET Farevarsel</span>
+            <span class="org">Meteorologisk institutt</span>
+          </div>
+          <p>Farevarsler for vær — vind, regn, snø, skredfare knyttet til vær, skogbrannfare m.m. Publisert på gult, oransje og rødt nivå.</p>
+          <div class="meta">
+            <span class="tag">api.met.no · <b>MetAlerts (CAP)</b></span>
+            <span class="tag">oppdat. <b>~10 min</b></span>
+            <span class="tag">lisens: <b>NLOD 2.0</b></span>
+          </div>
+        </div>
+        <div class="source">
+          <div class="source-top">
+            <span class="dot" style="background:var(--flom)"></span>
+            <span class="nm">NVE Flom</span>
+            <span class="org">NVE / Varsom</span>
+          </div>
+          <p>Flomvarsler med faregrad 1–5 for fylker og varslingsregioner, fra Norges vassdrags- og energidirektorat.</p>
+          <div class="meta">
+            <span class="tag">api.nve.no · <b>Varsom</b></span>
+            <span class="tag">oppdat. <b>~15 min</b></span>
+            <span class="tag">lisens: <b>NLOD 2.0</b></span>
+          </div>
+        </div>
+        <div class="source">
+          <div class="source-top">
+            <span class="dot" style="background:var(--jord)"></span>
+            <span class="nm">NVE Jordskred</span>
+            <span class="org">NVE / Varsom</span>
+          </div>
+          <p>Jord- og flomskredvarsler med faregrad 1–5 for varslingsregioner.</p>
+          <div class="meta">
+            <span class="tag">api.nve.no · <b>Varsom</b></span>
+            <span class="tag">oppdat. <b>~15 min</b></span>
+            <span class="tag">lisens: <b>NLOD 2.0</b></span>
+          </div>
+        </div>
+        <div class="source">
+          <div class="source-top">
+            <span class="dot" style="background:var(--sno)"></span>
+            <span class="nm">NVE Snøskred</span>
+            <span class="org">NVE / Varsom</span>
+          </div>
+          <p>Snøskredvarsler med faregrad 1–5 for snøskredregionene i vinterhalvåret.</p>
+          <div class="meta">
+            <span class="tag">Varsom · <b>varslingsregioner</b></span>
+            <span class="tag">oppdat. <b>~30 min</b></span>
+            <span class="tag">lisens: <b>NLOD 2.0</b></span>
+          </div>
+        </div>
+        <div class="source" style="grid-column: 1 / -1">
+          <div class="source-top">
+            <span class="dot" style="background:var(--veg)"></span>
+            <span class="nm">Statens vegvesen</span>
+            <span class="org">Statens vegvesen</span>
+          </div>
+          <p>Trafikkmeldinger på riks- og fylkesveg — stengte veger, kolonnekjøring, ulykker, vegarbeid og vedlikehold. Dette er den desidert største kilden i antall, og gjelder framkommelighet mer enn fare.</p>
+          <div class="meta">
+            <span class="tag">DATEX II v3.1 · <b>NLOD</b></span>
+            <span class="tag">oppdat. <b>~5 min</b></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIK BRUKER DU KARTET -->
+    <section class="om-section">
+      <div class="barhead">
+        <div class="bar"></div>
+        <h2 class="sec">Slik bruker du kartet</h2>
+      </div>
+      <p class="sec-intro">To filtre og to merker hjelper deg å lese kartet raskt.</p>
+      <div class="use-grid">
+        <div class="use">
+          <div class="ix">FILTER 01</div>
+          <h4>Filtrer etter fylke</h4>
+          <p>Velg ett eller flere fylker i venstre kolonne for å vise bare varsler som gjelder der. Tallet på hvert fylke viser hvor mange aktive varsler det har akkurat nå.</p>
+        </div>
+        <div class="use">
+          <div class="ix">FILTER 02</div>
+          <h4>Filtrer etter kilde</h4>
+          <p>Chipsene over kartet slår hver kilde av og på. Slå av Statens vegvesen om du kun vil se vær- og skredvarsler — trafikkmeldingene er mange og kan ellers dominere bildet.</p>
+        </div>
+        <div class="use">
+          <div class="ix">MERKE 01</div>
+          <h4>Faregrad &amp; nivå</h4>
+          <p>Hvert varsel viser kildens egen gradering — MET sitt gule/oransje/røde nivå, eller NVE sin faregrad 1–5.</p>
+          <span class="badge-demo"><span class="sq" style="background:#F4D03F">2</span>Faregrad 2 · Moderat</span>
+        </div>
+        <div class="use">
+          <div class="ix">MERKE 02</div>
+          <h4>Gyldighet</h4>
+          <p>Hvert varsel er merket <em>Aktiv</em>, <em>Utløper snart</em> eller <em>Utløpt</em> etter kildens egen gyldighetsperiode, så du ser hva som faktisk gjelder nå.</p>
+          <span class="badge-demo" style="color:var(--ok-color)"><span style="width:7px;height:7px;border-radius:99px;background:var(--ok-color);display:inline-block"></span>Aktiv</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKJULT I v1 — ntfy-varsling. Behold for senere versjon. Se docs/ntfy-parkert.md.
+    <section class="om-section">
+      <div class="barhead">
+        <div class="bar"></div>
+        <h2 class="sec">Få varsel på telefonen</h2>
+      </div>
+      ... ntfy-steg ...
+    </section>
+    -->
+
+    <!-- DISCLAIMER -->
+    <section class="om-section">
+      <div class="disclaimer">
+        <span class="ico">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+            <path d="M12 9v4"/><path d="M12 17h.01"/>
+          </svg>
+        </span>
+        <div>
+          <div class="eyebrow">Viktig</div>
+          <p>varselkart.no samler offisielle varsler fra MET, NVE og Statens vegvesen på ett kart, og gjengir dem slik de er publisert. <span class="hl">Vi vurderer ikke alvorlighetsgrad selv.</span> Ved akutt fare — ring 110/112 og følg offisielle kanaler. Dette er ikke en nødtjeneste.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- KOLOFON -->
+    <section class="om-section">
+      <div class="colo">
+        <div>
+          <div class="barhead">
+            <div class="bar"></div>
+            <h2 class="sec">Data &amp; lisens</h2>
+          </div>
+          <p>Kartdata er levert av Kartverket og vises med MapLibre. Varseldata hentes fra etatenes åpne API-er og er i hovedsak tilgjengelig under Norsk lisens for offentlige data (<a class="tlink" href="https://data.norge.no/nlod/no/2.0" target="_blank" rel="noopener">NLOD 2.0</a>). Kildene eier sine egne varsler; varselkart.no er en uavhengig, ikke-kommersiell tjeneste.</p>
+          <p>Ser du en feil, eller mangler en kilde? <a class="tlink" href="https://github.com/MrFoos/varselkart/issues" target="_blank" rel="noopener">Gi oss beskjed</a>.</p>
+        </div>
+        <div class="facts">
+          <div class="fact"><span class="k">Kartdata</span><span class="v">© Kartverket</span></div>
+          <div class="fact"><span class="k">Kartmotor</span><span class="v">MapLibre</span></div>
+          <div class="fact"><span class="k">Datalisens</span><span class="v">NLOD 2.0</span></div>
+          <div class="fact"><span class="k">Konto</span><span class="v">ingen</span></div>
+          <div class="fact"><span class="k">Sporing</span><span class="v">ingen</span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="om-footer">
+    <div class="small">© 2026 varselkart.no</div>
+  </footer>
+
+</div>
+
+<script>
+  const root = document.documentElement;
+  const btn = document.getElementById('dark-toggle');
+  const ac = 'var(--accent)';
+  const sunSvg = `<svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="${ac}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0"><circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>`;
+  const moonSvg = `<svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="${ac}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0"><path d="M16 11.5A6 6 0 119 4a5 5 0 007 7.5z"/></svg>`;
+
+  function applyTheme(dark) {
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    btn.innerHTML = dark ? sunSvg : moonSvg;
+  }
+
+  // Deler vk_dark-nøkkel med kartsiden så temaet huskes på tvers av sider
+  const stored = localStorage.getItem('vk_dark');
+  let dark = stored === '1';
+  applyTheme(dark);
+
+  btn.addEventListener('click', () => {
+    dark = !dark;
+    localStorage.setItem('vk_dark', dark ? '1' : '0');
+    applyTheme(dark);
+  });
+</script>
+</body>
+</html>

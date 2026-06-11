@@ -1,135 +1,73 @@
-/**
- * Lagdefinisjoner per kilde.
- * Farger representerer kildens egne alvorsskalaer — ingen egenvurdering.
- *
- * MET:           gult nivå / oransje nivå / rødt nivå
- * NVE flom/jord: aktivitetsnivå 1–4 (NVE-skala)
- * NVE snøskred:  faregrad 2–5 (NVE-skala)
- * Vegvesen:      severity (DATEX)
- * Avinor:        D (forsinket) / C (kansellert)
- */
+/** Lagdefinisjoner per kilde — derivert fra KILDE_REGISTRY i data.js. */
 
-// MapLibre expression som mapper kilde_alvorsetikett → farge
-const MET_FARGE = [
-  'match', ['get', 'kilde_alvorsetikett'],
-  'gult nivå',    '#f5c842',
-  'oransje nivå', '#f5800a',
-  'rødt nivå',    '#d73027',
-  '#999',
-];
+import { DATEX_KATEGORI, KILDE_REGISTRY } from './data.js';
+import { ikonData } from './icons.js';
 
-const NVE_FARGE = [
-  'match', ['get', 'kilde_alvorsetikett'],
-  '1', '#aadcf5',
-  '2', '#2196f3',
-  '3', '#1565c0',
-  '4', '#0d2f66',
-  '#2196f3',
-];
+const LAG_CONFIG = Object.entries(KILDE_REGISTRY).map(([kilde, cfg]) => ({
+  kilde,
+  polygonFarge: cfg.ident,
+  polygonOpasitet: cfg.polygonOpasitet,
+  sirkelFarge: cfg.ident,
+}));
 
-const SNOSKRED_FARGE = [
-  'match', ['get', 'kilde_alvorsetikett'],
-  '2', '#74add1',
-  '3', '#f46d43',
-  '4', '#d73027',
-  '5', '#a50026',
-  '#74add1',
-];
 
-const VEG_FARGE = '#ff9800';
-const FLY_FARGE = [
-  'match', ['get', 'kilde_alvorsetikett'],
-  'C', '#d73027',
-  'D', '#f5800a',
-  '#4caf50',
-];
+const LAG_SUFFIKSER = ['-fill', '-outline', '-sirkel', '-ikoner', '-fill-valgt', '-outline-valgt', '-sirkel-valgt'];
 
-// Lag-konfig: id, kildefilter, polygon-farge, sirkel-farge, synlighet-start
-const LAG_CONFIG = [
-  {
-    kilde: 'met',
-    polygonFarge: MET_FARGE,
-    polygonOpasitet: 0.25,
-    sirkelFarge: MET_FARGE,
-  },
-  {
-    kilde: 'nve_flom',
-    polygonFarge: NVE_FARGE,
-    polygonOpasitet: 0.3,
-    sirkelFarge: NVE_FARGE,
-  },
-  {
-    kilde: 'nve_jordskred',
-    polygonFarge: NVE_FARGE,
-    polygonOpasitet: 0.3,
-    sirkelFarge: NVE_FARGE,
-  },
-  {
-    kilde: 'nve_snoskred',
-    polygonFarge: SNOSKRED_FARGE,
-    polygonOpasitet: 0.3,
-    sirkelFarge: SNOSKRED_FARGE,
-  },
-  {
-    kilde: 'vegvesen',
-    polygonFarge: VEG_FARGE,
-    polygonOpasitet: 0.25,
-    sirkelFarge: VEG_FARGE,
-  },
-  {
-    kilde: 'avinor',
-    polygonFarge: FLY_FARGE,
-    polygonOpasitet: 0.25,
-    sirkelFarge: FLY_FARGE,
-  },
-];
-
-export function leggTilLag(map, kildeId, erSynlig) {
-  const cfg = LAG_CONFIG.find(c => c.kilde === kildeId);
-  if (!cfg) return;
-
-  const sourceId = `varsler-${kildeId}`;
-  const synlighet = erSynlig ? 'visible' : 'none';
-
-  if (!map.getSource(sourceId)) {
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] },
-    });
+function buildVegIkonUttrykk() {
+  const arms = [];
+  for (const [kat, { ikon }] of Object.entries(DATEX_KATEGORI)) {
+    arms.push(kat, `vv-${ikon}`);
   }
+  return ['match', ['get', 'kilde_kategori'], ...arms, 'vv-alert'];
+}
 
-  // Polygon-fill
+export async function registrerVegvesenIkoner(map) {
+  const uniqIkoner = [...new Set(Object.values(DATEX_KATEGORI).map(k => k.ikon))];
+  if (!uniqIkoner.includes('alert')) uniqIkoner.push('alert');
+
+  await Promise.all(uniqIkoner.map(navn => new Promise(resolve => {
+    const { path, viewBox } = ikonData(navn);
+    const size = 24;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${viewBox}" fill="none" stroke="rgba(0,0,0,0.82)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image(size, size);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      if (!map.hasImage(`vv-${navn}`)) map.addImage(`vv-${navn}`, img, { pixelRatio: 2 });
+      resolve();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+    img.src = url;
+  })));
+}
+
+/** Oppretter alle MapLibre-lag for en kilde (source må eksistere). */
+function opprettLag(map, kildeId, cfg, synlighet) {
+  const sourceId = `varsler-${kildeId}`;
+
   if (!map.getLayer(`${kildeId}-fill`)) {
     map.addLayer({
       id: `${kildeId}-fill`,
       type: 'fill',
       source: sourceId,
       filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: {
-        'fill-color': cfg.polygonFarge,
-        'fill-opacity': cfg.polygonOpasitet,
-      },
+      paint: { 'fill-color': cfg.polygonFarge, 'fill-opacity': cfg.polygonOpasitet },
       layout: { visibility: synlighet },
     });
   }
 
-  // Polygon-outline
   if (!map.getLayer(`${kildeId}-outline`)) {
     map.addLayer({
       id: `${kildeId}-outline`,
       type: 'line',
       source: sourceId,
       filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: {
-        'line-color': cfg.polygonFarge,
-        'line-width': 1.5,
-        'line-opacity': 0.7,
-      },
+      paint: { 'line-color': cfg.polygonFarge, 'line-width': 2, 'line-opacity': 1.0 },
       layout: { visibility: synlighet },
     });
   }
 
-  // Punkt-sirkel
   if (!map.getLayer(`${kildeId}-sirkel`)) {
     map.addLayer({
       id: `${kildeId}-sirkel`,
@@ -146,27 +84,95 @@ export function leggTilLag(map, kildeId, erSynlig) {
       layout: { visibility: synlighet },
     });
   }
+
+  if (!map.getLayer(`${kildeId}-sirkel-valgt`)) {
+    map.addLayer({
+      id: `${kildeId}-sirkel-valgt`,
+      type: 'circle',
+      source: sourceId,
+      filter: ['==', ['get', 'id'], '__NONE__'],
+      paint: {
+        'circle-color': '#fff',
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 8, 10, 14],
+        'circle-stroke-color': cfg.sirkelFarge,
+        'circle-stroke-width': 2.5,
+        'circle-opacity': 1.0,
+      },
+      layout: { visibility: synlighet },
+    });
+  }
+
+  if (!map.getLayer(`${kildeId}-fill-valgt`)) {
+    map.addLayer({
+      id: `${kildeId}-fill-valgt`,
+      type: 'fill',
+      source: sourceId,
+      filter: ['==', ['get', 'id'], '__NONE__'],
+      paint: { 'fill-color': cfg.polygonFarge, 'fill-opacity': 0.55 },
+      layout: { visibility: synlighet },
+    });
+  }
+
+  if (!map.getLayer(`${kildeId}-outline-valgt`)) {
+    map.addLayer({
+      id: `${kildeId}-outline-valgt`,
+      type: 'line',
+      source: sourceId,
+      filter: ['==', ['get', 'id'], '__NONE__'],
+      paint: { 'line-color': cfg.polygonFarge, 'line-width': 3, 'line-opacity': 1.0 },
+      layout: { visibility: synlighet },
+    });
+  }
+
+  if (kildeId === 'vegvesen' && !map.getLayer('vegvesen-ikoner')) {
+    map.addLayer({
+      id: 'vegvesen-ikoner',
+      type: 'symbol',
+      source: sourceId,
+      filter: ['==', ['geometry-type'], 'Point'],
+      layout: {
+        'icon-image': buildVegIkonUttrykk(),
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.6, 10, 1.0],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        visibility: synlighet,
+      },
+    });
+  }
 }
 
-export function oppdaterKildeLag(map, kildeId, varsler) {
+export function leggTilLag(map, kildeId, erSynlig) {
+  const cfg = LAG_CONFIG.find(c => c.kilde === kildeId);
+  if (!cfg) return;
+
+  const sourceId = `varsler-${kildeId}`;
+  const synlighet = erSynlig ? 'visible' : 'none';
+
+  if (!map.getSource(sourceId)) {
+    map.addSource(sourceId, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  }
+
+  opprettLag(map, kildeId, cfg, synlighet);
+}
+
+export function oppdaterKildeLag(map, kildeId, situasjoner) {
   const sourceId = `varsler-${kildeId}`;
   const src = map.getSource(sourceId);
   if (!src) return;
 
-  const features = varsler
-    .filter(v => v.kilde === kildeId && v.geometri)
-    .map(v => ({
+  const features = situasjoner
+    .filter(s => s.src === kildeId && s.geometri)
+    .map(s => ({
       type: 'Feature',
-      id: v.id,
-      geometry: v.geometri,
+      geometry: s.geometri,
       properties: {
-        id: v.id,
-        tittel: v.tittel,
-        kilde: v.kilde,
-        kilde_kategori: v.kilde_kategori,
-        kilde_alvorsetikett: v.kilde_alvorsetikett || '',
-        gyldig_til: v.gyldig_til || '',
-        lenke: v.lenke || '',
+        id: s.id,
+        tittel: s.tittel || '',
+        kilde: kildeId,
+        kilde_kategori: s.kilde_kategori || '',
+        kilde_alvorsetikett: s.kilde_alvorsetikett || '',
+        gyldig_til: s.gyldigTil || '',
+        lenke: s.lenke || '',
       },
     }));
 
@@ -175,12 +181,25 @@ export function oppdaterKildeLag(map, kildeId, varsler) {
 
 export function settLagSynlighet(map, kildeId, synlig) {
   const val = synlig ? 'visible' : 'none';
-  for (const suffix of ['-fill', '-outline', '-sirkel']) {
-    const id = `${kildeId}${suffix}`;
-    if (map.getLayer(id)) {
-      map.setLayoutProperty(id, 'visibility', val);
-    }
+  for (const s of LAG_SUFFIKSER) {
+    const id = `${kildeId}${s}`;
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', val);
   }
 }
 
 export const ALLE_KILDER = LAG_CONFIG.map(c => c.kilde);
+
+export function settValgtVarsel(map, v) {
+  for (const kilde of ALLE_KILDER) {
+    for (const s of ['-sirkel-valgt', '-fill-valgt', '-outline-valgt']) {
+      const id = `${kilde}${s}`;
+      if (map.getLayer(id)) map.setFilter(id, ['==', ['get', 'id'], '__NONE__']);
+    }
+  }
+  if (!v) return;
+  const kilde = v.kilde || v.src;
+  for (const s of ['-sirkel-valgt', '-fill-valgt', '-outline-valgt']) {
+    const id = `${kilde}${s}`;
+    if (map.getLayer(id)) map.setFilter(id, ['==', ['get', 'id'], v.id]);
+  }
+}

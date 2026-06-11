@@ -34,12 +34,26 @@ ALVOR_FARGER = {
 class MetIngestor(BaseIngestor):
     kilde_navn = "met"
 
-    async def hent_varsler(self) -> list[Varsel]:
+    def __init__(self) -> None:
+        self._last_modified: Optional[str] = None
+
+    async def hent_varsler(self) -> list[Varsel] | None:
         headers = {"User-Agent": settings.met_user_agent}
+        if self._last_modified:
+            headers["If-Modified-Since"] = self._last_modified
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(FEED_URL, headers=headers)
-            resp.raise_for_status()
+
+        if resp.status_code == 304:
+            logger.debug("met: ingen nye data (304 Not Modified)")
+            return None
+
+        resp.raise_for_status()
+
+        last_mod = resp.headers.get("Last-Modified")
+        if last_mod:
+            self._last_modified = last_mod
 
         root = etree.fromstring(resp.content)
         lookup = get_fylke_lookup()
@@ -84,8 +98,6 @@ def _parse_item(item, lookup) -> Optional[Varsel]:
     pub_date_str = item.findtext("pubDate") or ""
     utstedt = _rss_date_to_iso(pub_date_str)
 
-    lenke = item.findtext("link") or ""
-
     # Geometri — georss:polygon er "lat lon lat lon ..."
     polygon_el = item.find(f"{{{GEORSS_NS}}}polygon")
     fylke_tags: list[str] = []
@@ -115,7 +127,7 @@ def _parse_item(item, lookup) -> Optional[Varsel]:
         beskrivelse=beskrivelse.strip()[:800] if beskrivelse else None,
         utstedt=utstedt,
         gyldig_til=_iso_strip(gyldig_til_str),
-        lenke=lenke,
+        lenke="",
         raw_json=None,
         first_seen="",
         last_seen="",

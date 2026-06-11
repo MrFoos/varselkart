@@ -30,7 +30,7 @@ SITUATION_URL = (
     "/datexapi/GetSituation/pullsnapshotdata"
 )
 
-D2_NS = "http://datex2.eu/schema/3/common"
+D2_NS = "http://datex2.eu/schema/3/situation"
 
 # Brukes kun internt for logging og fallback-tittel — vises aldri som typekode i UI
 KATEGORI_NORSK: dict[str, str] = {
@@ -59,47 +59,46 @@ KATEGORI_NORSK: dict[str, str] = {
     "TransitInformation": "Kollektivinformasjon",
 }
 
-# If-Modified-Since: bevares mellom scheduler-kjøringer for å unngå unødige re-hentinger
-_last_modified: Optional[str] = None
-
-
 class VegvesenIngestor(BaseIngestor):
     kilde_navn = "vegvesen"
 
-    async def hent_varsler(self) -> list[Varsel]:
-        global _last_modified
+    def __init__(self) -> None:
+        self._last_modified: Optional[str] = None
 
+    async def hent_varsler(self) -> list[Varsel] | None:
         if not settings.datex_username:
             logger.warning("DATEX_USERNAME ikke satt — hopper over vegvesen-ingest")
             return []
 
-        headers: dict[str, str] = {"Accept": "application/xml"}
-        if _last_modified:
-            headers["If-Modified-Since"] = _last_modified
+        # Serveren returnerer text/xml — accept application/xml gir 406
+        headers: dict[str, str] = {}
+        if self._last_modified:
+            headers["If-Modified-Since"] = self._last_modified
 
-        auth = (settings.datex_username, settings.datex_password)
+        auth = (settings.datex_username, settings.datex_password.get_secret_value())
 
         async with httpx.AsyncClient(timeout=45, auth=auth) as client:
             resp = await client.get(SITUATION_URL, headers=headers)
 
         if resp.status_code == 304:
             logger.debug("vegvesen: ingen nye data (304 Not Modified)")
-            return []
+            return None
 
         resp.raise_for_status()
 
         last_mod = resp.headers.get("Last-Modified")
         if last_mod:
-            _last_modified = last_mod
+            self._last_modified = last_mod
 
         root = etree.fromstring(resp.content)
         lookup = get_fylke_lookup()
         varsler: list[Varsel] = []
 
         for situation in root.iter(f"{{{D2_NS}}}situation"):
+            situation_id = situation.get("id") or None
             for record in situation.findall(".//{*}situationRecord"):
                 try:
-                    varsel = _parse_record(record, lookup)
+                    varsel = _parse_record(record, lookup, situation_id)
                     if varsel:
                         varsler.append(varsel)
                 except Exception as exc:
@@ -108,7 +107,7 @@ class VegvesenIngestor(BaseIngestor):
         return varsler
 
 
-def _parse_record(record, lookup) -> Optional[Varsel]:
+def _parse_record(record, lookup, situation_id: Optional[str] = None) -> Optional[Varsel]:
     rec_id = record.get("id") or ""
     if not rec_id:
         return None
@@ -124,13 +123,15 @@ def _parse_record(record, lookup) -> Optional[Varsel]:
     except (TypeError, ValueError):
         return None
 
-    # Sjekk om situasjonen er utløpt
+    # Sjekk om situasjonen er utløpt; ta vare på tidspunktet som gyldig_til
     end_el = record.find(".//{*}overallEndTime")
+    overall_end_time = None
     if end_el is not None and end_el.text:
         try:
             end_dt = datetime.fromisoformat(end_el.text.replace("Z", "+00:00"))
             if end_dt < datetime.now(timezone.utc):
                 return None
+            overall_end_time = end_el.text
         except ValueError:
             pass
 
@@ -141,25 +142,35 @@ def _parse_record(record, lookup) -> Optional[Varsel]:
     # Alvorlighet — DATEX-skala umodifisert
     severity = record.findtext(".//{*}severity") or ""
 
-    # Tidspunkt
-    start_time = (
-        record.findtext(".//{*}startOfPeriod")
-        or record.findtext(".//{*}situationRecordVersionTime")
-    )
-    end_time = record.findtext(".//{*}endOfPeriod")
+    # Publiseringstid (når varselet ble utstedt/oppdatert)
+    publish_time = record.findtext(".//{*}situationRecordVersionTime")
+
+    # Faktisk starttid for situasjonen (kan ligge frem i tid for planlagte arbeider)
+    start_tid = record.findtext(".//{*}overallStartTime")
+
+    # Validitetsstatus fra SVV (active / suspended / definedByValidityTimeSpec)
+    validity_status = record.findtext(".//{*}validityStatus")
+
+    # Periodiske tids-vinduer (f.eks. natt-arbeid 22:00–06:00 ti/on)
+    perioder_json = _hent_perioder(record)
 
     # Norsk fritekst fra generalPublicComment
     norsk_tekst = _hent_norsk_tekst(record)
 
-    # Tittel: norsk fritekst, aldri engelsk typekode
-    tittel_base = norsk_tekst or KATEGORI_NORSK.get(kategori, "Trafikkinformasjon")
-    # Klipp langt fritekst til tittel (maks 100 tegn), behold full tekst som beskrivelse
-    if len(tittel_base) > 100:
-        tittel = f"Vegvesen — {tittel_base[:97]}…"
-    else:
-        tittel = f"Vegvesen — {tittel_base}"
+    kategori_norsk = KATEGORI_NORSK.get(kategori, "Trafikkinformasjon")
+    tittel = kategori_norsk
+    beskrivelse = norsk_tekst or None
 
-    beskrivelse = norsk_tekst if norsk_tekst and len(norsk_tekst) > 100 else None
+    road_number = record.findtext(".//{*}roadNumber") or ""
+    road_name = record.findtext(".//{*}roadName") or ""
+    if road_number and road_name:
+        omrade = f"{road_number} {road_name}"
+    elif road_number:
+        omrade = road_number
+    elif road_name:
+        omrade = road_name
+    else:
+        omrade = None
 
     geom = {"type": "Point", "coordinates": [lon, lat]}
     fylke_tags = lookup.punkt_til_fylker(lon, lat)
@@ -176,13 +187,47 @@ def _parse_record(record, lookup) -> Optional[Varsel]:
         fylke_tags=fylke_tags,
         tittel=tittel,
         beskrivelse=beskrivelse,
-        utstedt=start_time,
-        gyldig_til=end_time,
+        utstedt=publish_time,
+        gyldig_til=overall_end_time,
+        start_tid=start_tid,
+        validity_status=validity_status,
+        perioder_json=perioder_json,
+        omrade=omrade,
+        situation_id=situation_id,
         lenke="https://www.vegvesen.no/trafikkinformasjon/",
         raw_json=None,
         first_seen="",
         last_seen="",
     )
+
+
+def _hent_perioder(record) -> Optional[str]:
+    """Returnerer JSON-streng med periodiske tids-vinduer, f.eks. natt-arbeid 22:00–06:00."""
+    perioder = []
+    # Iterer per validPeriod-blokk for å holde tidsvindu og dager sammen
+    for valid_period in record.findall(".//{*}validPeriod"):
+        time_el = valid_period.find(".//{*}recurringTimePeriodOfDay")
+        if time_el is None:
+            continue
+        start = time_el.findtext(".//{*}startTimeOfPeriod")
+        end = time_el.findtext(".//{*}endTimeOfPeriod")
+        if not start or not end:
+            continue
+        start_hm = start[:5] if len(start) >= 5 else start
+        end_hm = end[:5] if len(end) >= 5 else end
+
+        dager: list[str] = []
+        for dag_el in valid_period.findall(".//{*}applicableDay"):
+            if dag_el.text:
+                dag = dag_el.text.strip()
+                if dag not in dager:
+                    dager.append(dag)
+
+        perioder.append({"start": start_hm, "end": end_hm, "dager": dager})
+
+    if not perioder:
+        return None
+    return json.dumps(perioder, ensure_ascii=False)
 
 
 def _hent_norsk_tekst(record) -> Optional[str]:

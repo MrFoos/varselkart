@@ -17,6 +17,11 @@ from ..geo.fylke_lookup import get_fylke_lookup  # noqa: F401 (re-eksportert for
 logger = logging.getLogger(__name__)
 
 
+def _chunks(lst, n):
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -28,14 +33,17 @@ class BaseIngestor(ABC):
         """Identifikator brukt i database og logging."""
 
     @abstractmethod
-    async def hent_varsler(self) -> list[Varsel]:
-        """Henter og normaliserer varsler fra kilden. Kaster ved nett-/parse-feil."""
+    async def hent_varsler(self) -> list[Varsel] | None:
+        """Henter og normaliserer varsler fra kilden. Returnerer None ved 304. Kaster ved nett-/parse-feil."""
 
     async def kjør(self) -> None:
         nå = _utc_now()
         conn = get_connection()
         try:
             varsler = await self.hent_varsler()
+            if varsler is None:
+                logger.debug("%s: ingen endringer (304)", self.kilde_navn)
+                return
             self._lagre_varsler(conn, varsler)
             self._oppdater_feed_status(conn, status="ok", sist_ok=nå, feilmelding=None)
             logger.info("%s: %d varsler hentet", self.kilde_navn, len(varsler))
@@ -46,54 +54,71 @@ class BaseIngestor(ABC):
             conn.close()
 
     def _lagre_varsler(self, conn: sqlite3.Connection, varsler: list[Varsel]) -> None:
+        if not varsler:
+            # Tom respons — ikke utløp eksisterende varsler (feed kan være nede)
+            return
+
         nå = _utc_now()
-        med_nye: list[str] = []
+
+        # Fjern duplikater innen samme batch (siste vinner)
+        varsler = list({v.dedup_id: v for v in varsler}.values())
 
         with conn:
-            for v in varsler:
-                eksisterende = conn.execute(
-                    "SELECT id, status FROM varsler WHERE dedup_id = ?", (v.dedup_id,)
-                ).fetchone()
+            eksisterende_ids: set[str] = set()
+            for chunk in _chunks([v.dedup_id for v in varsler], 500):
+                ph = ",".join("?" * len(chunk))
+                eksisterende_ids.update(
+                    row[0] for row in conn.execute(
+                        f"SELECT dedup_id FROM varsler WHERE dedup_id IN ({ph})", chunk
+                    )
+                )
 
-                if eksisterende is None:
+            for v in varsler:
+                if v.dedup_id not in eksisterende_ids:
                     conn.execute(
                         """INSERT INTO varsler
                            (dedup_id, kilde, kilde_kategori, kilde_alvorsetikett,
                             geometri_type, geometri_json, fylke_tags,
-                            tittel, beskrivelse, utstedt, gyldig_til,
+                            tittel, beskrivelse, omrade, utstedt, gyldig_til,
+                            start_tid, validity_status, perioder_json, situation_id,
                             first_seen, last_seen, status, lenke, raw_json)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (
                             v.dedup_id, v.kilde, v.kilde_kategori, v.kilde_alvorsetikett,
                             v.geometri_type, v.geometri_json, json.dumps(v.fylke_tags),
-                            v.tittel, v.beskrivelse, v.utstedt, v.gyldig_til,
+                            v.tittel, v.beskrivelse, v.omrade, v.utstedt, v.gyldig_til,
+                            v.start_tid, v.validity_status, v.perioder_json, v.situation_id,
                             nå, nå, v.status, v.lenke, v.raw_json,
                         ),
                     )
-                    med_nye.append(v.dedup_id)
                 else:
                     # Oppdater last_seen og eventuelle metadata-endringer
                     conn.execute(
                         """UPDATE varsler SET last_seen=?, kilde_alvorsetikett=?,
-                           gyldig_til=?, status=?, raw_json=?
+                           geometri_type=?, geometri_json=?, fylke_tags=?,
+                           tittel=?, beskrivelse=?, omrade=?, gyldig_til=?, status=?, raw_json=?,
+                           start_tid=?, validity_status=?, perioder_json=?, situation_id=?
                            WHERE dedup_id=?""",
-                        (nå, v.kilde_alvorsetikett, v.gyldig_til, v.status, v.raw_json, v.dedup_id),
+                        (
+                            nå, v.kilde_alvorsetikett,
+                            v.geometri_type, v.geometri_json, json.dumps(v.fylke_tags),
+                            v.tittel, v.beskrivelse, v.omrade, v.gyldig_til, v.status, v.raw_json,
+                            v.start_tid, v.validity_status, v.perioder_json, v.situation_id,
+                            v.dedup_id,
+                        ),
                     )
 
-            # Merk varsler som ikke lenger er med i feed-svaret som utløpt
+            # Merk varsler fra denne kilden som ikke er i feed-svaret som utløpt
             aktive_ids = [v.dedup_id for v in varsler]
-            if aktive_ids:
-                placeholders = ",".join("?" * len(aktive_ids))
-                conn.execute(
-                    f"""UPDATE varsler SET status='utlopt', last_seen=?
-                        WHERE kilde=? AND status='aktiv'
-                        AND dedup_id NOT IN ({placeholders})""",
-                    [nå, self.kilde_navn] + aktive_ids,
-                )
-            else:
-                # Tom respons fra kilden — utløp alle, men IKKE tolk det som «alt rolig»
-                # (feed kan være nede — det håndteres via feed_status.status='feil')
-                pass
+            conn.execute("CREATE TEMP TABLE IF NOT EXISTS _aktive_ids (dedup_id TEXT PRIMARY KEY)")
+            conn.execute("DELETE FROM _aktive_ids")
+            conn.executemany("INSERT OR IGNORE INTO _aktive_ids VALUES (?)", [(d,) for d in aktive_ids])
+            conn.execute(
+                """UPDATE varsler SET status='utlopt', last_seen=?
+                   WHERE kilde=? AND status='aktiv'
+                   AND dedup_id NOT IN (SELECT dedup_id FROM _aktive_ids)""",
+                [nå, self.kilde_navn],
+            )
 
     def _oppdater_feed_status(
         self,

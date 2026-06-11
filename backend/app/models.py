@@ -15,8 +15,13 @@ class Varsel:
     fylke_tags: list[str] = field(default_factory=list)
     tittel: Optional[str] = None
     beskrivelse: Optional[str] = None
+    omrade: Optional[str] = None
     utstedt: Optional[str] = None
     gyldig_til: Optional[str] = None
+    start_tid: Optional[str] = None
+    validity_status: Optional[str] = None
+    perioder_json: Optional[str] = None
+    situation_id: Optional[str] = None
     status: str = "aktiv"
     lenke: Optional[str] = None
     raw_json: Optional[str] = None
