@@ -1,0 +1,15 @@
+services:
+  ntfy:
+    image: binwiederhier/ntfy
+    command: serve
+    volumes:
+      - ./server.yml:/etc/ntfy/server.yml:ro
+      - ntfy-cache:/var/cache/ntfy
+      - ntfy-data:/var/lib/ntfy
+    ports:
+      - "127.0.0.1:2587:80"
+    restart: always
+
+volumes:
+  ntfy-cache:
+  ntfy-data:
