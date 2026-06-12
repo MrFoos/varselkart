@@ -2,12 +2,21 @@ import hashlib
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from ..database import get_connection
+from ..geo.fylke_lookup import FYLKE_SLUGS
 
 router = APIRouter()
+
+GYLDIGE_STATUS = {"aktiv", "utlopt", "alle"}
+GYLDIGE_KILDER = {"met", "nve_flom", "nve_jordskred", "nve_snoskred", "vegvesen", "avinor"}
+GYLDIGE_FYLKER = set(FYLKE_SLUGS.values())
+
+# Maks rader per kilde i CTE-en nedenfor, slik at én kilde med mange hendelser
+# (f.eks. vegvesen) ikke fyller hele limit alene
+MAKS_PER_KILDE = 300
 
 
 def _safe_url(url: str | None) -> str | None:
@@ -79,6 +88,17 @@ def hent_varsler(
     fylke: Optional[str] = Query(default=None),
     limit: int = Query(default=500, le=2000),
 ):
+    if status not in GYLDIGE_STATUS:
+        raise HTTPException(status_code=422, detail=f"Ugyldig status '{status}' — må være en av {sorted(GYLDIGE_STATUS)}")
+
+    kilder = [k.strip() for k in kilde.split(",")] if kilde else []
+    if ukjente := [k for k in kilder if k not in GYLDIGE_KILDER]:
+        raise HTTPException(status_code=422, detail=f"Ukjent kilde: {', '.join(ukjente)}")
+
+    fylker = [f.strip() for f in fylke.split(",")] if fylke else []
+    if ukjente := [f for f in fylker if f not in GYLDIGE_FYLKER]:
+        raise HTTPException(status_code=422, detail=f"Ukjent fylke: {', '.join(ukjente)}")
+
     conn = get_connection()
     params: list = []
     where: list[str] = []
@@ -87,15 +107,13 @@ def hent_varsler(
         where.append("v.status = ?")
         params.append(status)
 
-    if kilde:
-        kilder = [k.strip() for k in kilde.split(",")]
+    if kilder:
         placeholders = ",".join("?" * len(kilder))
         where.append(f"v.kilde IN ({placeholders})")
         params.extend(kilder)
 
     # Fylkefilter via SQLite JSON-funksjon
-    if fylke:
-        fylker = [f.strip() for f in fylke.split(",")]
+    if fylker:
         fylke_conditions = " OR ".join(
             ["EXISTS (SELECT 1 FROM json_each(v.fylke_tags) WHERE value = ?)"] * len(fylker)
         )
@@ -104,7 +122,7 @@ def hent_varsler(
 
     where_sql = "WHERE " + " AND ".join(where) if where else ""
 
-    per_kilde = limit if kilde else 300
+    per_kilde = limit if kilder else MAKS_PER_KILDE
 
     # Hent data og ETag i én atomisk spørring via window-funksjon.
     # CTE begrenser til de per_kilde nyeste hendelsene per kilde for å unngå
@@ -139,7 +157,6 @@ def hent_varsler(
 
 @router.get("/varsler/{varsel_id}", response_model=VarselResponse)
 def hent_varsel(varsel_id: int):
-    from fastapi import HTTPException
     conn = get_connection()
     try:
         row = conn.execute("SELECT * FROM varsler WHERE id = ?", (varsel_id,)).fetchone()

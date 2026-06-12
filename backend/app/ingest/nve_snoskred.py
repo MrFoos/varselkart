@@ -4,6 +4,7 @@ Henter RegionSummary og matcher mot regionspolygoner.
 Polygonformat fra API: liste med én streng "lat,lon lat,lon ..."
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -24,6 +25,7 @@ BASE_URL = "https://api01.nve.no/hydrology/forecast/avalanche/v6.3.0/api"
 REGION_TYPE_A = 10
 
 _region_cache: dict[int, dict] | None = None
+_region_cache_lock = asyncio.Lock()
 
 
 class NveSnoskredIngestor(BaseIngestor):
@@ -99,29 +101,31 @@ class NveSnoskredIngestor(BaseIngestor):
 
 async def _hent_regioner(client: httpx.AsyncClient) -> dict[int, dict]:
     global _region_cache
-    if _region_cache is not None:
-        return _region_cache
+    async with _region_cache_lock:
+        if _region_cache is not None:
+            return _region_cache
 
-    resp = await client.get(
-        f"{BASE_URL}/Region/{REGION_TYPE_A}",
-        headers={"Accept": "application/json"},
-    )
-    resp.raise_for_status()
-    data = resp.json()
+        resp = await client.get(
+            f"{BASE_URL}/Region/{REGION_TYPE_A}",
+            headers={"Accept": "application/json"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
 
-    _region_cache = {}
-    for r in data:
-        rid = r.get("Id")
-        polygon_list = r.get("Polygon", [])
-        if not polygon_list:
-            continue
-        polygon_str = polygon_list[0] if isinstance(polygon_list, list) else polygon_list
-        coords = _polygon_str_til_coords(polygon_str)
-        if coords:
-            _region_cache[rid] = {"type": "Polygon", "coordinates": [coords]}
+        cache: dict[int, dict] = {}
+        for r in data:
+            rid = r.get("Id")
+            polygon_list = r.get("Polygon", [])
+            if not polygon_list:
+                continue
+            polygon_str = polygon_list[0] if isinstance(polygon_list, list) else polygon_list
+            coords = _polygon_str_til_coords(polygon_str)
+            if coords:
+                cache[rid] = {"type": "Polygon", "coordinates": [coords]}
 
-    logger.info("nve_snoskred: lastet %d regionspolygoner", len(_region_cache))
-    return _region_cache
+        logger.info("nve_snoskred: lastet %d regionspolygoner", len(cache))
+        _region_cache = cache
+        return cache
 
 
 def _polygon_str_til_coords(text: str) -> list[list[float]]:
@@ -129,9 +133,18 @@ def _polygon_str_til_coords(text: str) -> list[list[float]]:
     coords = []
     for pair in text.strip().split():
         parts = pair.split(",")
-        if len(parts) >= 2:
+        if len(parts) < 2:
+            continue
+        try:
             lat, lon = float(parts[0]), float(parts[1])
-            coords.append([lon, lat])
+        except ValueError:
+            logger.warning("nve_snoskred: ugyldig koordinatpar '%s' hoppet over", pair)
+            continue
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            logger.warning("nve_snoskred: koordinat utenfor gyldig område (%s, %s) hoppet over", lat, lon)
+            continue
+        coords.append([lon, lat])
     if coords and coords[0] != coords[-1]:
         coords.append(coords[0])
-    return coords
+    # Et gyldig polygon trenger minst 3 unike punkter + lukkepunkt
+    return coords if len(coords) >= 4 else []

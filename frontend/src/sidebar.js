@@ -258,7 +258,7 @@ function byggDetalj(v, container, { onLukk, rawVarsler = [], onVelgRelater }) {
       </div>
       <div class="wd-body">
         ${kommentarHTML(v.beskrivelse)}
-        ${v.instruks ? `<div class="wd-instruks"><div class="wd-instruks-label">Kildens råd</div><div class="wd-instruks-tekst">${v.instruks}</div></div>` : ''}
+        ${v.instruks ? `<div class="wd-instruks"><div class="wd-instruks-label">Kildens råd</div><div class="wd-instruks-tekst">${esc(v.instruks)}</div></div>` : ''}
         ${fasettHTML}
         <div class="wd-meta-tabell">
           ${(() => {

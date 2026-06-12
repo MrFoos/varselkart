@@ -27,6 +27,10 @@ def _utc_now() -> str:
 
 
 class BaseIngestor(ABC):
+    # Backoff-tilstand ved gjentatte feil (instansattributter settes ved første feil)
+    _feil_på_rad: int = 0
+    _hopp_over: int = 0
+
     @property
     @abstractmethod
     def kilde_navn(self) -> str:
@@ -37,10 +41,17 @@ class BaseIngestor(ABC):
         """Henter og normaliserer varsler fra kilden. Returnerer None ved 304. Kaster ved nett-/parse-feil."""
 
     async def kjør(self) -> None:
+        if self._hopp_over > 0:
+            self._hopp_over -= 1
+            logger.info("%s: backoff etter %d feil — hopper over kjøring (%d igjen)",
+                        self.kilde_navn, self._feil_på_rad, self._hopp_over)
+            return
+
         nå = _utc_now()
         conn = get_connection()
         try:
             varsler = await self.hent_varsler()
+            self._feil_på_rad = 0
             if varsler is None:
                 logger.debug("%s: ingen endringer (304)", self.kilde_navn)
                 return
@@ -48,6 +59,10 @@ class BaseIngestor(ABC):
             self._oppdater_feed_status(conn, status="ok", sist_ok=nå, feilmelding=None)
             logger.info("%s: %d varsler hentet", self.kilde_navn, len(varsler))
         except Exception as exc:
+            self._feil_på_rad += 1
+            # Enkel backoff: hopp over inntil 3 kjøringer (maks 4× intervall) ved gjentatte feil,
+            # så vi ikke hamrer på en kilde som er nede eller rate-limiter oss
+            self._hopp_over = min(self._feil_på_rad, 3)
             logger.error("%s: feil ved henting — %s", self.kilde_navn, exc)
             self._oppdater_feed_status(conn, status="feil", feilmelding=str(exc))
         finally:

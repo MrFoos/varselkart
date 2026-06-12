@@ -44,8 +44,15 @@ DATA_PATH = Path(__file__).parent.parent.parent / "data" / "fylker-2024.geojson"
 
 class FylkeLookup:
     def __init__(self, geojson_path: Path = DATA_PATH) -> None:
-        with open(geojson_path, encoding="utf-8") as f:
-            fc = json.load(f)
+        try:
+            with open(geojson_path, encoding="utf-8") as f:
+                fc = json.load(f)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Fylkesgeometri mangler: {geojson_path} — sjekk at data-katalogen følger med i image/deploy"
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Fylkesgeometri er korrupt: {geojson_path}") from exc
 
         self._geometries: list = []
         self._slugs: list[str] = []
