@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
@@ -47,3 +48,21 @@ app.add_middleware(
 app.include_router(varsler.router, prefix="/api")
 app.include_router(status.router, prefix="/api")
 app.include_router(geo.router, prefix="/api")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots():
+    return Response(
+        content="User-agent: *\nAllow: /\nSitemap: https://varselkart.no/sitemap.xml\n",
+        media_type="text/plain",
+    )
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap():
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://varselkart.no/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://varselkart.no/om.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+</urlset>"""
+    return Response(content=content, media_type="application/xml")

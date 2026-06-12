@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="no" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Side ikke funnet — varselkart.no</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#E2571A">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    html, body { height: 100%; }
+    #app { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+    .err-wrap { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 40px 24px; max-width: 480px; }
+    .err-code { font-family: var(--font-mono); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+    .err-title { font-family: var(--font-display); font-size: 48px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; margin: 0; }
+    .err-body { font-size: 17px; line-height: 1.55; color: var(--dim); margin: 0; }
+    .err-home { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 22px; border-radius: 99px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
+    [data-theme="dark"] .err-home { color: #1a0a02; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="err-wrap">
+    <div class="err-code">404</div>
+    <h1 class="err-title">Side ikke funnet</h1>
+    <p class="err-body">Vi fant ikke siden du leter etter. Den kan ha blitt flyttet eller slettet.</p>
+    <a href="/" class="err-home">Tilbake til kartet</a>
+  </div>
+</div>
+<script>
+  const root = document.documentElement;
+  const stored = localStorage.getItem('vk_dark');
+  if (stored === '1') root.setAttribute('data-theme', 'dark');
+</script>
+<script defer src="https://umami.varselkart.no/script.js" data-website-id="1c066e5a-fb4b-4091-9934-7154f888c06c"></script>
+</body>
+</html>
