@@ -63,6 +63,9 @@ CREATE INDEX IF NOT EXISTS idx_varsler_sit     ON varsler(situation_id);
 
 
 def get_connection() -> sqlite3.Connection:
+    # check_same_thread=False: tilkoblinger opprettes per kall og kan krysse
+    # tråder mellom FastAPI og APScheduler. Hver tilkobling brukes kun av én
+    # tråd om gangen, og WAL-modus håndterer samtidige lesere + én skriver.
     conn = sqlite3.connect(settings.database_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")

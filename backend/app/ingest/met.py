@@ -102,13 +102,14 @@ def _parse_item(item, lookup) -> Optional[Varsel]:
     polygon_el = item.find(f"{{{GEORSS_NS}}}polygon")
     fylke_tags: list[str] = []
 
-    if polygon_el is not None and polygon_el.text:
-        coords = _georss_polygon_to_coords(polygon_el.text)
+    coords = _georss_polygon_to_coords(polygon_el.text) if (polygon_el is not None and polygon_el.text) else []
+    if coords:
         geom = {"type": "Polygon", "coordinates": [coords]}
         geometri_json = json.dumps(geom)
         geometri_type = "polygon"
         fylke_tags = lookup.geometri_til_fylker(geom)
     else:
+        logger.warning("met: varsel %s mangler gyldig geometri — bruker fallback-punkt", guid)
         geom = {"type": "Point", "coordinates": [15.0, 65.0]}
         geometri_json = json.dumps(geom)
         geometri_type = "punkt"
@@ -139,11 +140,19 @@ def _georss_polygon_to_coords(text: str) -> list[list[float]]:
     tokens = text.strip().split()
     coords = []
     for i in range(0, len(tokens) - 1, 2):
-        lat, lon = float(tokens[i]), float(tokens[i + 1])
+        try:
+            lat, lon = float(tokens[i]), float(tokens[i + 1])
+        except ValueError:
+            logger.warning("met: ugyldig koordinatpar '%s %s' hoppet over", tokens[i], tokens[i + 1])
+            continue
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            logger.warning("met: koordinat utenfor gyldig område (%s, %s) hoppet over", lat, lon)
+            continue
         coords.append([lon, lat])
     if coords and coords[0] != coords[-1]:
         coords.append(coords[0])
-    return coords
+    # Et gyldig polygon trenger minst 3 unike punkter + lukkepunkt
+    return coords if len(coords) >= 4 else []
 
 
 def _rss_date_to_iso(rss_date: str) -> Optional[str]:
