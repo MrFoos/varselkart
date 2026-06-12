@@ -1,0 +1,33 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/varselkart
+            git fetch origin
+            CHANGED=$(git diff --name-only HEAD origin/main)
+            git reset --hard origin/main
+
+            if echo "$CHANGED" | grep -qE '^backend/|^requirements\.txt'; then
+              docker compose up --build -d backend
+              echo "Backend endret — rebuildet og restartet"
+            fi
+
+            if echo "$CHANGED" | grep -qE '^nginx/'; then
+              docker compose restart nginx
+              echo "Nginx-konfig endret — nginx restartet"
+            fi
+
+            echo "Deploy fullført"
