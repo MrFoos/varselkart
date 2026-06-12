@@ -132,7 +132,7 @@ async function oppdater(visLoading = false) {
   } catch (e) {
     if (skjelettTimer) clearTimeout(skjelettTimer);
     console.error('Feil ved oppdatering:', e);
-    if (visLoading) {
+    if (visLoading || alleVarsler.length === 0) {
       visFeilListe(() => oppdater(true));
     }
   }
