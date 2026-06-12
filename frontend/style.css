@@ -350,10 +350,10 @@ a { color: inherit; }
 }
 
 #chip-bar { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; flex-shrink: 0; }
-.chip-group { display: inline-flex; align-items: center; flex-wrap: nowrap; gap: 0 8px; }
+.chip-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 8px; }
 
 .lag-chip {
-  display: inline-flex; align-items: center; gap: 7px;
+  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
   padding: 6px 11px; border-radius: var(--pill);
   border: 1px solid var(--line); background: transparent;
   color: var(--faint); font-family: var(--font-ui);
@@ -362,9 +362,9 @@ a { color: inherit; }
 .lag-chip.on { border-color: rgba(226,87,26,.35); background: var(--panel); color: var(--text); opacity: 1; }
 .lag-chip:hover { opacity: 1; }
 .chip-dot { width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0; }
-.chip-nede { color: var(--down-color); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; }
-.chip-forsinket { color: var(--stale-color); font-family: var(--font-mono); font-size: 10.5px; }
-.chip-count { font-family: var(--font-mono); font-size: 10.5px; color: var(--dim); }
+.chip-nede { color: var(--down-color); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.chip-forsinket { color: var(--stale-color); font-family: var(--font-mono); font-size: 10.5px; white-space: nowrap; }
+.chip-count { font-family: var(--font-mono); font-size: 10.5px; color: var(--dim); white-space: nowrap; }
 .chip-count--zero { font-weight: 400; }
 .chip-group-prefix { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); white-space: nowrap; padding-right: 2px; align-self: center; }
 .chip-group-divider { display: inline-block; width: 1px; height: 16px; background: var(--line); margin: 0 4px; align-self: center; flex-shrink: 0; }
@@ -722,5 +722,9 @@ a { color: inherit; }
   #map-column { padding: 16px; gap: 12px; overflow: visible; }
   #map { height: 290px; flex: none; }
   #mobile-content { display: block; }
-  #app-footer { height: auto; padding: 8px 16px; font-size: 10px; }
+  #app-footer { height: auto; padding: 8px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); margin-top: 28px; font-size: 10px; }
+
+  .chip-group { gap: 4px 6px; }
+  .chip-group-prefix { flex-basis: 100%; padding-right: 0; }
+  .chip-group-divider { display: none; }
 }
