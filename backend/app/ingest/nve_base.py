@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -10,6 +11,28 @@ from ..geo.fylke_lookup import FYLKE_SLUGS, get_fylke_lookup
 from ..models import Varsel
 
 logger = logging.getLogger(__name__)
+
+_OSLO = ZoneInfo("Europe/Oslo")
+
+
+def nve_tid_til_utc(ts: str | None) -> str | None:
+    """Normaliserer NVE-tider til UTC Z.
+
+    NVE returnerer ValidFrom/ValidTo/PublishTime uten tidssone (f.eks.
+    '2026-06-14T06:59:59') men mener norsk lokaltid — samme respons har
+    CreatedTime med +02:00. Uten dette tolker frontend (new Date) naive
+    strenger som nettleserens lokaltid, som forskyver tidene for besøkende
+    utenfor Norge.
+    """
+    if not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts)
+    except ValueError:
+        return ts  # defensivt: la ukjent format stå
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=_OSLO)
+    return dt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def resolve_fylke_tags(item: dict) -> list[str]:
@@ -70,8 +93,8 @@ def parse_nve_warning(item: dict, *, kilde: str, kategori: str, tittel_prefiks: 
         fylke_tags=fylke_tags,
         tittel=f"{tittel_prefiks} — {omrade}",
         beskrivelse=item.get("MainText") or item.get("ActivityText"),
-        utstedt=item.get("PublishTime") or item.get("validFrom"),
-        gyldig_til=item.get("ValidTo") or item.get("validTo"),
+        utstedt=nve_tid_til_utc(item.get("PublishTime") or item.get("validFrom")),
+        gyldig_til=nve_tid_til_utc(item.get("ValidTo") or item.get("validTo")),
         status="aktiv" if aktivitet > 0 else "utlopt",
         lenke="https://www.varsom.no/",
         raw_json=json.dumps(item),

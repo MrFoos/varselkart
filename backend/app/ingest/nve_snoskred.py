@@ -15,6 +15,7 @@ import httpx
 from ..geo.fylke_lookup import get_fylke_lookup
 from ..models import Varsel
 from .base import BaseIngestor
+from .nve_base import nve_tid_til_utc
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,8 @@ class NveSnoskredIngestor(BaseIngestor):
                 fylke_tags=fylke_tags,
                 tittel=f"Snøskredvarsel — {region_navn}",
                 beskrivelse=w.get("MainText"),
-                utstedt=w.get("PublishTime"),
-                gyldig_til=w.get("ValidTo"),
+                utstedt=nve_tid_til_utc(w.get("PublishTime")),
+                gyldig_til=nve_tid_til_utc(w.get("ValidTo")),
                 lenke=f"https://varsom.no/snoskredvarsling/varsel/{region_id}/{dato}/",
                 raw_json=None,
                 first_seen="",
