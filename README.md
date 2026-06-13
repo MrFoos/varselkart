@@ -57,6 +57,10 @@ Tjenestene starter på port 80. Sett opp HTTPS med Certbot etter at DNS peker ti
 certbot --nginx -d varselkart.no -d www.varselkart.no
 ```
 
+### Analytics (umami)
+
+Webanalyse kjøres av en **delt umami-instans** som betjener flere domener (bl.a. varselkart.no og nettradar.no). Den er ikke en del av dette prosjektets compose-stack — den driftes separat fra `/opt/umami/` på VPS-en, med nginx-vhostene `umami.varselkart.no` og `umami.nettradar.no` som proxyer til `127.0.0.1:3000`. Hvert nettsted er registrert som en egen «website» i umami.
+
 ## Datakilder
 
 | Kilde | Etat | Oppdatering | Lisens |
