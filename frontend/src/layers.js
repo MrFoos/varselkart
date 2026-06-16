@@ -1,6 +1,6 @@
 /** Lagdefinisjoner per kilde — derivert fra KILDE_REGISTRY i data.js. */
 
-import { DATEX_KATEGORI, KILDE_REGISTRY } from './data.js';
+import { DATEX_KATEGORI, KILDE_REGISTRY, varselLifecycle } from './data.js';
 import { ikonData } from './icons.js';
 
 const LAG_CONFIG = Object.entries(KILDE_REGISTRY).map(([kilde, cfg]) => ({
@@ -161,7 +161,7 @@ export function oppdaterKildeLag(map, kildeId, situasjoner) {
   if (!src) return;
 
   const features = situasjoner
-    .filter(s => s.src === kildeId && s.geometri)
+    .filter(s => s.src === kildeId && s.geometri && varselLifecycle(s).state !== 'expired')
     .map(s => ({
       type: 'Feature',
       geometry: s.geometri,
