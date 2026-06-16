@@ -60,9 +60,10 @@ async def robots():
 
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap():
-    content = """<?xml version="1.0" encoding="UTF-8"?>
+    lastmod = "2026-06-16"
+    content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://varselkart.no/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://varselkart.no/om.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://varselkart.no/</loc><lastmod>{lastmod}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://varselkart.no/om.html</loc><lastmod>{lastmod}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>"""
     return Response(content=content, media_type="application/xml")

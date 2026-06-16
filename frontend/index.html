@@ -1,32 +1,58 @@
 <!DOCTYPE html>
-<html lang="no" data-theme="light">
+<html lang="nb" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>varselkart.no – Nasjonalt varslingskart</title>
-  <meta name="description" content="Offisielle varsler fra MET, NVE, Statens vegvesen og Avinor samlet på ett kart.">
+  <meta name="description" content="Offisielle vær-, flom-, skred- og vegvarsler fra MET, NVE og Statens vegvesen samlet på ett kart — i sanntid.">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://varselkart.no">
   <meta property="og:title" content="varselkart.no – Nasjonalt varslingskart">
-  <meta property="og:description" content="Offisielle varsler fra MET, NVE, Statens vegvesen og Avinor samlet på ett kart.">
+  <meta property="og:description" content="Offisielle vær-, flom-, skred- og vegvarsler fra MET, NVE og Statens vegvesen samlet på ett kart — i sanntid.">
   <meta property="og:locale" content="nb_NO">
   <meta property="og:image" content="https://varselkart.no/assets/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="varselkart.no – Nasjonalt varslingskart">
-  <meta name="twitter:description" content="Offisielle varsler fra MET, NVE, Statens vegvesen og Avinor samlet på ett kart.">
+  <meta name="twitter:description" content="Offisielle vær-, flom-, skred- og vegvarsler fra MET, NVE og Statens vegvesen samlet på ett kart — i sanntid.">
   <meta name="twitter:image" content="https://varselkart.no/assets/og-image.png">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "varselkart",
-    "url": "https://varselkart.no",
-    "description": "Offisielle varsler fra MET, NVE, Statens vegvesen og Avinor samlet på ett kart.",
-    "applicationCategory": "Utilities",
-    "inLanguage": "nb-NO",
-    "isAccessibleForFree": true,
-    "operatingSystem": "Web"
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://varselkart.no/#website",
+        "url": "https://varselkart.no",
+        "name": "varselkart.no",
+        "description": "Offisielle vær-, flom-, skred- og vegvarsler fra MET, NVE og Statens vegvesen samlet på ett kart — i sanntid.",
+        "inLanguage": "nb-NO",
+        "publisher": { "@id": "https://varselkart.no/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://varselkart.no/#org",
+        "name": "varselkart.no",
+        "url": "https://varselkart.no",
+        "logo": "https://varselkart.no/favicon-512.png"
+      },
+      {
+        "@type": "WebApplication",
+        "name": "varselkart",
+        "url": "https://varselkart.no",
+        "description": "Offisielle vær-, flom-, skred- og vegvarsler fra MET, NVE og Statens vegvesen samlet på ett kart — i sanntid.",
+        "applicationCategory": "Utilities",
+        "inLanguage": "nb-NO",
+        "isAccessibleForFree": true,
+        "operatingSystem": "Web",
+        "publisher": { "@id": "https://varselkart.no/#org" },
+        "sourceOrganization": [
+          { "@type": "GovernmentOrganization", "name": "Meteorologisk institutt (MET)", "url": "https://www.met.no" },
+          { "@type": "GovernmentOrganization", "name": "Norges vassdrags- og energidirektorat (NVE)", "url": "https://www.nve.no" },
+          { "@type": "GovernmentOrganization", "name": "Statens vegvesen", "url": "https://www.vegvesen.no" }
+        ]
+      }
+    ]
   }
   </script>
   <link rel="canonical" href="https://varselkart.no">
