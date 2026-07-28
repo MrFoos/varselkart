@@ -5,7 +5,7 @@ apscheduler==3.11.3
 httpx==0.28.1
 lxml==6.1.1
 shapely==2.1.2
-pyproj==3.7.0
+pyproj==3.7.2
 sqlite-utils==3.38
 python-dotenv==1.2.2
 tzdata==2026.3
