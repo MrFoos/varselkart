@@ -1,0 +1,2 @@
+# Kun for CI og lokal kjøring av backend/tests/ — havner aldri i imaget.
+pytest>=9.1.1
