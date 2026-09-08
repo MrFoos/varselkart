@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Samme som python:3.12-slim i Dockerfile, så en bump som
+          # brekker her brekker også i imaget.
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Installer avhengigheter
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Røyktester
+        run: pytest tests/ -q
+
+  build:
+    # Testene over kjører mot pip på en ubuntu-runner. Dette steget beviser
+    # at de pinnede versjonene også installerer i det ekte imaget — der
+    # lxml og shapely bygges mot systembibliotekene i python:3.12-slim.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bygg backend-imaget
+        run: docker build -t varselkart-backend:ci ./backend
+
+      - name: Verifiser at appen importerer i imaget
+        # Vi importerer i stedet for å starte tjenesten. Å kjøre den ville
+        # trigget lifespan, som starter scheduleren og kjører alle ingestors
+        # mot MET, NVE og Vegvesen — ekte kall til tredjeparts-API-er ved
+        # hver PR, med den flakingen det gir. Importen fanger det vi er ute
+        # etter her: at pakkene i imaget faktisk laster.
+        run: |
+          docker run --rm varselkart-backend:ci python -c "
+          from app.main import app
+          stier = sorted(app.openapi()['paths'])
+          assert '/api/status' in stier, stier
+          print('OK — ruter i imaget:', stier)
+          "
