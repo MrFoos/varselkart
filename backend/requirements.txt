@@ -8,4 +8,4 @@ shapely==2.1.2
 pyproj==3.8.0
 sqlite-utils==4.2.1
 python-dotenv==1.2.3
-tzdata==2026.3
+tzdata==2026.4
