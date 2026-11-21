@@ -1,5 +1,7 @@
 # varselkart.no
 
+> **Avviklet (november 2026).** varselkart.no var et læringsprosjekt og er tatt ned. Repoet er arkivert og vedlikeholdes ikke lenger — koden ligger her som referanse.
+
 Offisielle norske varsler fra MET, NVE og Statens vegvesen samlet på ett interaktivt kart.
 
 varselkart.no henter vær-, flom-, skred- og vegvarsler fra Norges offisielle etater og viser dem i sanntid på ett kart. Ingen konto, ingen sporing.
